@@ -1,0 +1,21 @@
+hopf:
+  equation:
+    x: '2*pi*y*w + (e*x-x*(x*x+y*y))*100.0'
+    y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*100.0'
+  parameters:
+    w: 440
+    e: 1.0
+
+lorenz:
+  equation:
+    x: 'sigma*(y-x)*tau'
+    y: '(x*(rho-z)-y)*tau'
+    z: '(x*y-beta*z)*tau'
+  parameters:
+    sigma: 10
+    rho: 28
+    beta: 2.6666
+    tau: 50.0
+  
+
+
