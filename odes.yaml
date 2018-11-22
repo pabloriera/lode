@@ -1,9 +1,9 @@
 hopf:
   equation:
-    x: '2*pi*y*w + (e*x-x*(x*x+y*y))*100.0'
-    y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*100.0'
+    x: '2*pi*y*w +a + (e*x-x*(x*x+y*y))*100.0'
+    y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*100.0 + lorenz.x' #param[2]
   parameters:
-    w: 440
+    w: '440.0 + lorenz.x'
     e: 1.0
 
 lorenz:
@@ -16,6 +16,3 @@ lorenz:
     rho: 28
     beta: 2.6666
     tau: 50.0
-  
-
-

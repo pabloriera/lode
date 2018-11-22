@@ -4,15 +4,14 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/media/miles/84dab7fa-68d6-47cc-96b4-55fc72913c26/Dropbox/PABLo/Software/lode/Oderk4.cpp" "/media/miles/84dab7fa-68d6-47cc-96b4-55fc72913c26/Dropbox/PABLo/Software/lode/build/CMakeFiles/Oderk4.dir/Oderk4.cpp.o"
+  "/home/miles/Dropbox/PABLo/Software/lode/Oderk4/Oderk4.cpp" "/home/miles/Dropbox/PABLo/Software/lode/Oderk4/build/CMakeFiles/Oderk4.dir/Oderk4.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
 # The include file search paths:
 set(CMAKE_CXX_TARGET_INCLUDE_PATH
-  "/usr/local/include/SuperCollider/plugin_interface"
-  "/usr/local/include/SuperCollider/common"
-  "/usr/local/include/SuperCollider"
+  "/plugin_interface"
+  "/common"
   )
 
 # Targets to which this target links.

@@ -1,0 +1,7 @@
+- initial conditions
+- time variable
+- output variables
+- gain
+- share variables
+- delay
+- noise
