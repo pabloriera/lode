@@ -1,3 +1,0 @@
-/media/miles/84dab7fa-68d6-47cc-96b4-55fc72913c26/Dropbox/PABLo/Software/lode/ode_sources/Lorenz/CMakeFiles/edit_cache.dir
-/media/miles/84dab7fa-68d6-47cc-96b4-55fc72913c26/Dropbox/PABLo/Software/lode/ode_sources/Lorenz/CMakeFiles/rebuild_cache.dir
-/media/miles/84dab7fa-68d6-47cc-96b4-55fc72913c26/Dropbox/PABLo/Software/lode/ode_sources/Lorenz/CMakeFiles/Lorenz.dir
