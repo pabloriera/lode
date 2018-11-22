@@ -1,3 +1,0 @@
-/home/miles/Dropbox/PABLo/Software/lode/Oderk4/build/CMakeFiles/rebuild_cache.dir
-/home/miles/Dropbox/PABLo/Software/lode/Oderk4/build/CMakeFiles/Oderk4.dir
-/home/miles/Dropbox/PABLo/Software/lode/Oderk4/build/CMakeFiles/edit_cache.dir
