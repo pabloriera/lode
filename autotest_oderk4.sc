@@ -8,5 +8,5 @@
 
 s.quit;
 s.waitForBoot{
- {Oderk4(\Hopf,DC.ar(1.0),DC.ar(440.0))}.play
+ {Oderk4.ar(\Hopf,DC.ar(1.0),DC.ar(440.0))}.play
 }
