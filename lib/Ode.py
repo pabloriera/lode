@@ -6,9 +6,9 @@ import pathlib
 from shutil import copy2
 import shlex
 
-from .utils import template_read_sub_write, parameters_from_eq
-from .directories import sc_extensions_path, home_path, sources_path
-from .directories import ode_template_filename, sc_def_template_filename
+from utils import template_read_sub_write, parameters_from_eq
+from directories import sc_extensions_path, home_path, sources_path
+from directories import ode_template_filename, sc_def_template_filename
 
 
 class Ode():

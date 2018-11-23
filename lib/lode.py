@@ -1,4 +1,4 @@
-from .ServerManager import DefaultServer
+from ServerManager import DefaultServer
 from IPython import embed
 from lib.Ode import Ode
 import yaml
@@ -59,7 +59,7 @@ def main(args):
         yaml_parse(odes_yaml)
 
 
-if __name__ == 'lib.lode':
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Build so from yaml file with ode definitions')
     parser.add_argument('odes_yaml', nargs='+', help='yaml file with ode definitions')
     parser.add_argument('--watch', '-w', dest='watch', action='store_true', help='watch file')
