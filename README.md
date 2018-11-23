@@ -25,4 +25,7 @@ equation:
   y: '-4*pi*x*w + (e*y-y*(x*x+y*y))*100.0'
 ```
 
+### Live code scenario
+
+Start Supercollider from lib folder and run lode.sc code. Then run  python3 -m lib.lode.py -w odes.yaml (from parten folder). Now open the odes.yaml file and save it, sound should appear automatically.
 
