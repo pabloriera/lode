@@ -6,13 +6,13 @@ hopf:
     w: 440.0
     e: 1.0
 
-lorenz:
-  equation:
-    x: 'sigma*(y-x)*tau'
-    y: '(x*(rho-z)-y)*tau'
-    z: '(x*y-beta*z)*tau'
-  parameters:
-    sigma: 10
-    rho: 28
-    beta: 2.6666
-    tau: 50.0
+# lorenz:
+#   equation:
+#     x: 'sigma*(y-x)*tau'
+#     y: '(x*(rho-z)-y)*tau'
+#     z: '(x*y-beta*z)*tau'
+#   parameters:
+#     sigma: 10
+#     rho: 28
+#     beta: 2.6666
+#     tau: 50.0

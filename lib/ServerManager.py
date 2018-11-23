@@ -217,7 +217,7 @@ class SCLangServerManager(ServerManager):
         if GET_SC_INFO:
             self.sclang = BidirectionalOSCServer()
             self.sclang.connect((self.addr, self.SCLang_port))
-            self.loadSynthDef(FOXDOT_INFO_FILE)
+            self.loadSynthDef(LODE_INFO_FILE)
             try:
                 info = self.getInfo()
             except RequestTimeout:
@@ -239,7 +239,7 @@ class SCLangServerManager(ServerManager):
 
         # Load recorder OSCFunc
 
-        self.loadRecorder()  # move to the quark?
+        # self.loadRecorder()  # move to the quark?
 
         # Toggle debug in SuperCollider
 
@@ -636,7 +636,7 @@ class SCLangServerManager(ServerManager):
 
     def loadRecorder(self):
         """ Loads an OSCFunc that starts/stops recording to a set path """
-        self.loadSynthDef(FOXDOT_RECORD_FILE)
+        self.loadSynthDef(LODE_RECORD_FILE)
         self._is_recording = False
         return
 
@@ -708,7 +708,7 @@ class SCLangServerManager(ServerManager):
 
             print("Booting SuperCollider Server...")
 
-            self.daemon = subprocess.Popen([SCLANG_EXEC, '-D', FOXDOT_STARTUP_FILE])
+            self.daemon = subprocess.Popen([SCLANG_EXEC, '-D', LODE_STARTUP_FILE])
 
             os.chdir(USER_CWD)
 
@@ -725,14 +725,14 @@ class SCLangServerManager(ServerManager):
 
         # 1. Compile startup file
 
-        with open(FOXDOT_STARTUP_FILE, 'w') as startup:
+        with open(LODE_STARTUP_FILE, 'w') as startup:
 
             startup.write('''Routine.run {
             s.options.blockSize = 128;
             s.options.memSize = 131072;
             s.bootSync();\n''')
 
-            files = [FOXDOT_OSC_FUNC, FOXDOT_BUFFERS_FILE]
+            files = [LODE_OSC_FUNC, LODE_BUFFERS_FILE]
             files = files + GET_SYNTHDEF_FILES() + GET_FX_FILES()
 
             for fn in files:

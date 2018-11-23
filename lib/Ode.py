@@ -6,14 +6,14 @@ import pathlib
 from shutil import copy2
 import shlex
 
-from utils import template_read_sub_write, parameters_from_eq
-from directories import sc_extensions_path, home_path, sources_path
-from directories import ode_template_filename, sc_def_template_filename
+from .utils import template_read_sub_write, parameters_from_eq
+from .directories import sc_extensions_path, home_path, sources_path
+from .directories import ode_template_filename, sc_def_template_filename
 
 
 class Ode():
 
-    bus_counter = 0
+    bus_counter = 10
 
     def __init__(self, config):
         self.config = config
@@ -24,6 +24,8 @@ class Ode():
             source_path=sources_path, ode_name=self.Name)
         self.sc_def_filename = '{home}/{sc_extensions_path}/{Ode_name}.scd'.format(
             home=home_path, sc_extensions_path=sc_extensions_path, Ode_name=self.Name)
+
+        self.sc_def_filename = '{}/{}.scd'.format(sources_path, self.Name)
 
         # self.plugins_destination = '{home}/{sc_extensions_path}/Oderk4/plugins/'.format(
         # home=home_path, sc_extensions_path=sc_extensions_path, Ode_name=self.Name)
@@ -54,7 +56,7 @@ class Ode():
     def setup(self):
         print(self.Name, 'setup')
         self.do_source_code()
-        self.do_sc_ndef()
+        self.do_sc_def()
         self.build()
 
     def do_source_code(self):
@@ -75,7 +77,7 @@ class Ode():
         subs = {'N_EQ': len(self.variables), 'N_PARAMETERS': len(self.parameters), 'EQUATION': self.equation_str}
         template_read_sub_write(ode_template_filename, self.ode_source_filename, subs)
 
-    def do_sc_ndef(self):
+    def do_sc_def(self):
         # ode_arg_list = ', '.join(self.parameters)
         def_arg_list = ', '.join(['{}={}'.format(p, self.parameters_values[p]) for p in self.parameters])
         ode_arg_list = ', '.join(['DC.ar(1)*{}'.format(p) for p in self.parameters])
@@ -88,7 +90,7 @@ class Ode():
         subs = {'Ode_name': self.Name, 'def_arg_list': def_arg_list, 'ode_arg_list': ode_arg_list,
                 'inputs': inputs, 'outputs': outputs}
         # template_read_sub_write(self.sc_def_template_filename, self.sc_def_filename, subs)
-        template_read_sub_write(sc_def_template_filename, '{}/{}.scd'.format(sources_path, self.Name), subs)
+        template_read_sub_write(sc_def_template_filename, self.sc_def_filename, subs)
 
     def build(self):
         os.chdir(self.build_path)
@@ -100,3 +102,9 @@ class Ode():
         # pathlib.Path(self.plugins_destination).mkdir(parents=True, exist_ok=True)
         # copy2('{path}/lib{Ode_name}.so'.format(path=os.getcwd(), Ode_name=self.Name), '{}/lib{}.so'.format(self.plugins_destination, self.Name))
         copy2('{path}/lib{Ode_name}.so'.format(path=os.getcwd(), Ode_name=self.Name), '{path}/..'.format(path=os.getcwd()))
+
+    def set_server(self, server):
+        self.server = server
+
+    def load_synth(self):
+        self.server.loadSynthDef(self.sc_def_filename)
