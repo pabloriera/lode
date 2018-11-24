@@ -1,6 +1,6 @@
 #include "SC_PlugIn.h"
 #include <dlfcn.h>
-#include <string>  
+#include <string>
 #include <iostream>
 
 // InterfaceTable contains pointers to functions in the host (server).
@@ -11,11 +11,11 @@ static InterfaceTable *ft;
 
 typedef  void (*equation_def)(float X[], float param[],float dX[]);
 
-    
+
 // declare struct to hold unit generator state
 struct Oderk4 : public Unit
 {
-    char *m_string;   
+    char *m_string;
     int m_string_size;
 
     float dt;
@@ -112,12 +112,13 @@ void Oderk4_Ctor(Oderk4* unit)
     // printf("calc_FullRate %d\n",calc_FullRate);
 
     // 1. set the calculation function.
-    int modRate = calc_BufRate;
     SETCALC(Oderk4_next_a);
 
     unit->m_string_size = IN0(0); // number of chars in the id string
-    // unit->m_string = (char*)RTAlloc(unit->mWorld, unit->m_string_size * sizeof(char));
-    unit->m_string = (char*)malloc(unit->m_string_size * sizeof(char)); 
+    unit->m_string = (char*) RTAlloc(unit->mWorld, unit->m_string_size * sizeof(char));
+    unit->m_string[unit->m_string_size] = 0; // terminate string
+    //unit->m_string = (char*)malloc(unit->m_string_size * sizeof(char));
+
     // Print("m_string %s\n",unit->m_string);
     // Print("string length %d\n", unit->m_string_size);
     for(int i = 0; i < unit->m_string_size; i++){
@@ -128,12 +129,12 @@ void Oderk4_Ctor(Oderk4* unit)
     };
     std::string ode_name(unit->m_string);
     // Print("Ode name %s\n",unit->m_string);
-    // Print("Ode name %s\n",ode_name.c_str());
+    Print("Ode name %s\n",ode_name.c_str());
     std::string libname("odes/lib"+ode_name+".so");
     std::cout << "Ode name: " << ode_name << std::endl;
     std::cout << "Lib name: " << libname  << std::endl;
     void* handle = dlopen(libname.c_str(), RTLD_LAZY);
-    
+
     if(handle!=NULL)
     {
       Print("dl opened\n");
@@ -143,7 +144,7 @@ void Oderk4_Ctor(Oderk4* unit)
       dimensions(dims);
       printf("dimensions %d\t%d\n", dims[0],dims[1]);
 
-      unit->equation = ( equation_def ) dlsym(handle, "equation");      
+      unit->equation = ( equation_def ) dlsym(handle, "equation");
 
       unit->N_EQ = dims[0];
       unit->N_PARAMETERS = dims[1];
@@ -193,14 +194,14 @@ void Oderk4_Dtor(Oderk4* unit)
 {
   if(unit->ok)
   {
-    free(unit->m_string);
-    RTFree(unit->mWorld, unit->X );
-    RTFree(unit->mWorld, unit->param );
-    RTFree(unit->mWorld, unit->F1 );
-    RTFree(unit->mWorld, unit->F2 );
-    RTFree(unit->mWorld, unit->F3 );
-    RTFree(unit->mWorld, unit->F4 );
-    RTFree(unit->mWorld, unit->xtemp );
+    RTFree(unit->mWorld, unit->m_string);
+    RTFree(unit->mWorld, unit->X);
+    RTFree(unit->mWorld, unit->param);
+    RTFree(unit->mWorld, unit->F1);
+    RTFree(unit->mWorld, unit->F2);
+    RTFree(unit->mWorld, unit->F3);
+    RTFree(unit->mWorld, unit->F4);
+    RTFree(unit->mWorld, unit->xtemp);
   }
 }
 
