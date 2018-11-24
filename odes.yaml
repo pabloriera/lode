@@ -8,7 +8,7 @@ hopf:
 
 # lorenz:
 #   equation:
-#     x: 'sigma*(y-x)*tau'
+#     x: 'sigma*(y-x)*tau' 
 #     y: '(x*(rho-z)-y)*tau'
 #     z: '(x*y-beta*z)*tau'
 #   parameters:

@@ -1,4 +1,4 @@
-(
+s.waitForBoot{
 OSCFunc(
 	{
 		arg msg, time, addr, port;
@@ -21,4 +21,4 @@ OSCFunc(
 	},
 	'/lode'
 );
-)
+}
