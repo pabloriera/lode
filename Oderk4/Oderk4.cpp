@@ -9,6 +9,19 @@ static InterfaceTable *ft;
 #define PI 3.141592653589793238462
 #define MAX_CHANNELS 8
 
+#define typeof(x) __typeof__(x)
+
+#define RTALLOC_AND_CHECK(lhs, size)                                \
+    (lhs) = (typeof(lhs)) RTAlloc(unit->mWorld, (size));            \
+    if (!(lhs)) {                                                   \
+      SETCALC(ft->fClearUnitOutputs);                               \
+      ClearUnitOutputs(unit, 1);                                    \
+      if (unit->mWorld->mVerbosity > -2) {                          \
+          Print("Failed to allocate memory for Oderk4 ugen.\n");    \
+      }                                                             \
+      return;                                                       \
+    }
+
 typedef  void (*equation_def)(float X[], float param[],float dX[]);
 
 
@@ -115,9 +128,8 @@ void Oderk4_Ctor(Oderk4* unit)
     SETCALC(Oderk4_next_a);
 
     unit->m_string_size = IN0(0); // number of chars in the id string
-    unit->m_string = (char*) RTAlloc(unit->mWorld, unit->m_string_size * sizeof(char));
+    RTALLOC_AND_CHECK(unit->m_string, unit->m_string_size * sizeof(char));
     unit->m_string[unit->m_string_size] = 0; // terminate string
-    //unit->m_string = (char*)malloc(unit->m_string_size * sizeof(char));
 
     // Print("m_string %s\n",unit->m_string);
     // Print("string length %d\n", unit->m_string_size);
@@ -152,14 +164,13 @@ void Oderk4_Ctor(Oderk4* unit)
       Print("N_PARAMETERS %d\n",unit->N_PARAMETERS);
       Print("N_EQ %d\n",unit->N_EQ);
 
-      unit->F1 = (float *)RTAlloc(unit->mWorld, unit->N_EQ * sizeof(float) );
-      unit->F2 = (float *)RTAlloc(unit->mWorld, unit->N_EQ * sizeof(float) );
-      unit->F3 = (float *)RTAlloc(unit->mWorld, unit->N_EQ * sizeof(float) );
-      unit->F4 = (float *)RTAlloc(unit->mWorld, unit->N_EQ * sizeof(float) );
-      unit->xtemp = (float *)RTAlloc(unit->mWorld, unit->N_EQ * sizeof(float) );
-
-      unit->X = (float*) RTAlloc(unit->mWorld,unit->N_EQ*sizeof(float));
-      unit->param = (float*) RTAlloc(unit->mWorld,unit->N_PARAMETERS*sizeof(float));
+      RTALLOC_AND_CHECK(unit->F1, unit->N_EQ * sizeof(float));
+      RTALLOC_AND_CHECK(unit->F2, unit->N_EQ * sizeof(float));
+      RTALLOC_AND_CHECK(unit->F3, unit->N_EQ * sizeof(float));
+      RTALLOC_AND_CHECK(unit->F4, unit->N_EQ * sizeof(float));
+      RTALLOC_AND_CHECK(unit->xtemp, unit->N_EQ * sizeof(float));
+      RTALLOC_AND_CHECK(unit->X, unit->N_EQ * sizeof(float));
+      RTALLOC_AND_CHECK(unit->param, unit->N_PARAMETERS * sizeof(float));
 
       unit->dt = SAMPLEDUR;
 
