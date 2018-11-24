@@ -107,8 +107,8 @@ static void Oderk4_Dtor(Oderk4* unit);
 void Oderk4_Ctor(Oderk4* unit)
 {
     printf("Oderk4 v0.2\n");
-    printf("SAMPLEDUR %g\n",SAMPLEDUR);
-    printf("mBufLength %d\n",unit->mBufLength );
+    // printf("SAMPLEDUR %g\n",SAMPLEDUR);
+    // printf("mBufLength %d\n",unit->mBufLength );
     // printf("calc_FullRate %d\n",calc_FullRate);
 
     // 1. set the calculation function.
@@ -119,7 +119,7 @@ void Oderk4_Ctor(Oderk4* unit)
     // unit->m_string = (char*)RTAlloc(unit->mWorld, unit->m_string_size * sizeof(char));
     unit->m_string = (char*)malloc(unit->m_string_size * sizeof(char)); 
     // Print("m_string %s\n",unit->m_string);
-    Print("string length %d\n", unit->m_string_size);
+    // Print("string length %d\n", unit->m_string_size);
     for(int i = 0; i < unit->m_string_size; i++){
         // char aux[1];
         // aux[0]= (char)IN0(1+i);

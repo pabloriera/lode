@@ -1,25 +1,22 @@
 Oderk4 : MultiOutUGen {
 	*ar { arg label ... in;
-		"ar".postln;
-		^this.multiNewList([label] ++ in);
+		("Oderk4:"++label).postln;
+		^this.multiNewList([label] ++ in);		
 	}
 	*new { arg label ... in;
-		"new".postln;
 		^this;
 	}
 	*new1 { arg label ... in;
 		var inputs_;
-		"new1".postln;
 		label = label ?? { "default" };
 		label.postln;
 		label = label.asString.collectAs(_.ascii, Array);
 		inputs_ = [label.size] ++ label ++ in;
-		inputs_.postln;
+		// inputs_.postln;
 		^super.new.rate_('audio').addToSynth.init(inputs_);
 	}
 
 	init { arg theInputs;
-		"init".postln;
 		inputs = theInputs;
 		^this.initOutputs(8,rate)
 	}
