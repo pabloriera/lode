@@ -106,10 +106,10 @@ static void Oderk4_Dtor(Oderk4* unit);
 // 3. calculate one sample of output.
 void Oderk4_Ctor(Oderk4* unit)
 {
-    printf("Oderk4 v0.2\n");
-    // printf("SAMPLEDUR %g\n",SAMPLEDUR);
-    // printf("mBufLength %d\n",unit->mBufLength );
-    // printf("calc_FullRate %d\n",calc_FullRate);
+    Print("Oderk4 v0.2\n");
+    // Print("SAMPLEDUR %g\n",SAMPLEDUR);
+    // Print("mBufLength %d\n",unit->mBufLength );
+    // Print("calc_FullRate %d\n",calc_FullRate);
 
     // 1. set the calculation function.
     SETCALC(Oderk4_next_a);
@@ -124,7 +124,7 @@ void Oderk4_Ctor(Oderk4* unit)
     for(int i = 0; i < unit->m_string_size; i++){
         // char aux[1];
         // aux[0]= (char)IN0(1+i);
-        // printf("letter %d: %s\n", i, aux);
+        // Print("letter %d: %s\n", i, aux);
         unit->m_string[i] = (char)IN0(1+i);
     };
     std::string ode_name(unit->m_string);
@@ -142,7 +142,7 @@ void Oderk4_Ctor(Oderk4* unit)
       dimensions = ( void (*)(int*) ) dlsym(handle, "dimensions");
       int dims[2];
       dimensions(dims);
-      printf("dimensions %d\t%d\n", dims[0],dims[1]);
+      Print("dimensions %d\t%d\n", dims[0],dims[1]);
 
       unit->equation = ( equation_def ) dlsym(handle, "equation");
 
