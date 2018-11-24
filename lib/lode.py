@@ -1,6 +1,6 @@
 from ServerManager import DefaultServer
 from IPython import embed
-from lib.Ode import Ode
+from Ode import Ode
 import yaml
 import argparse
 import pyinotify
