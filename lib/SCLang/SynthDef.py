@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 from . import Env
-from .SCLang import *
+from SCLang import *
 from ..ServerManager import DefaultServer
 from ..Settings import SYNTHDEF_DIR
 
