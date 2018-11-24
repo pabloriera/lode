@@ -19,13 +19,13 @@ import os.path
 from collections import namedtuple
 from threading import Thread
 
-from utils import WarningMsg
-from Settings import *
+from .utils import WarningMsg
+from .Settings import *
 
 if sys.version_info[0] > 2:
-    from OSC3 import *
+    from .OSC3 import *
 else:
-    from OSC import *
+    from .OSC import *
 
 # Keep in sync with Info.scd
 ServerInfo = namedtuple(
@@ -1068,6 +1068,6 @@ class TempoClient:
 
 if __name__ != "__main__":
 
-    from Settings import ADDRESS, PORT, PORT2
+    from .Settings import ADDRESS, PORT, PORT2
 
     DefaultServer = SCLangServerManager(ADDRESS, PORT, PORT2)
