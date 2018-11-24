@@ -9,7 +9,7 @@ Oderk4 : MultiOutUGen {
 	*new1 { arg label ... in;
 		var inputs_;
 		label = label ?? { "default" };
-		label.postln;
+		// label.postln;
 		label = label.asString.collectAs(_.ascii, Array);
 		inputs_ = [label.size] ++ label ++ in;
 		// inputs_.postln;
