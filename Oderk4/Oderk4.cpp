@@ -238,5 +238,5 @@ PluginLoad(Oderk4)
     // InterfaceTable *inTable implicitly given as argument to the load function
     ft = inTable; // store pointer to InterfaceTable
 
-    DefineSimpleUnit(Oderk4);
+    DefineDtorUnit(Oderk4);
 }
