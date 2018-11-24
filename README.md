@@ -1,26 +1,44 @@
-## Live coding with Ordinary Differential Equations
+# lode: Live coding with Ordinary Differential Equations
 
-Install Python dependencies:
+## Dependencies
+
+* Supercollider 3.7+
+* Python 3+
+
+## Install
+
+First, clone the repository.  You will also need cmake to compile the SC
+extensions and SC source code (dev packages).
 
 ```
-pip install -r requirements.txt
+sudo apt-get install build-essential cmake supercollider-dev
 ```
 
-Go to Oderk4 folder and execute `build_and_cp.sh`. This will copy the
+Then, install Python dependencies:
+
+```
+pip install -r --user requirements.txt
+```
+
+Go to Oderk4 folder and execute `build_and_cp.sh`.  This will copy the
 Supercollider Extension (`.so` file) into default user's Supercollider
-extension directory. Also it uses default include directory, change directories
-if needed.
+extension directory.  Also it uses default include directory, change
+directories if needed.
 
-Then run:
+## Usage
+
+### Testing...
+
+Run the following:
 
 ```
 python3 lib/yaml2so.py -w odes.yaml
 ```
 
-Then open `odes.yaml` in an editor and save it. This will compile the odes in
-the yaml.
+Then, open `odes.yaml` with some text editor and save it. This will compile the
+odes in the yaml.
 
-Then run on another terminal:
+Then, run on another terminal:
 
 ```
 cd lib/ && sclang -D ../autotest_oderk4.sc
