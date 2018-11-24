@@ -232,27 +232,6 @@ void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
 
 //////////////////////////////////////////////////////////////////
 
-// void Oderk4_next_k(Oderk4 *unit, int inNumSamples)
-// {
-
-//     for (int i=0; i < inNumSamples; ++i)
-//     {
-
-//         for(int k=0;k<unit->N_PARAMETERS;k++)
-//         {
-//             unit->param[k] = IN0(k);
-//         }
-
-//         rk4( unit );
-
-//         for(int k=0;k<unit->N_EQ;k++)
-//         {
-//             OUT(k)[i] = unit->X[k];
-//         }
-//     }
-
-// }
-
 // the entry point is called by the host when the plug-in is loaded
 PluginLoad(Oderk4)
 {
