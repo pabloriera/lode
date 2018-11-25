@@ -3,11 +3,11 @@ SynthDef.new(\Hopf,
 	{|input_offset=10, output_offset=10|
 		var osc;
 		var inputs;
-		inputs = 10.collect({|in| In.ar(in+input_offset);});
+		inputs = 10.collect({|in| In.ar(in+input_offset+64);});
 		inputs.do({arg item,i; item.source.inputs.postln});
 		osc = Oderk4.ar("Hopf",*inputs);
 		OffsetOut.ar(output_offset, osc[0]);
-		OffsetOut.ar(output_offset, osc[1]);
+		OffsetOut.ar(output_offset+1, osc[1]);
 }).add;
 
 SynthDef.new(\param,
@@ -33,8 +33,8 @@ SynthDef.new(\output,
 ~x = Synth(\Hopf);
 ~px1 = Synth(\param);
 ~px2 = Synth(\param);
-~px1.set(\val,0.1,\out,10);
-~px2.set(\val,330,\out,11);
+~px1.set(\val,0.1,\out,10+64);
+~px2.set(\val,330,\out,11+64);
 ~out = Synth(\output,10,1,1);
 )
 
@@ -43,8 +43,8 @@ SynthDef.new(\output,
 ~py1 = Synth(\param);
 ~py2 = Synth(\param);
 ~c1 = Synth(\connect);
-~py1.set(\val,0.1,\out,12);
-~py2.set(\val,10,\out,13);
-~c1.set(12,11)
+~py1.set(\val,0.1,\out,12+64);
+~py2.set(\val,10,\out,13+64);
+~c1.set(12+64,11)
 )
 
