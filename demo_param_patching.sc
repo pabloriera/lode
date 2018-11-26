@@ -22,8 +22,8 @@ SynthDef.new(\param,
 
 
 SynthDef.new(\connect,
-	{| in=0, out=10|
-		Out.ar(out,In.ar(in,1));
+	{| in=0, out=0|
+		Out.ar(out+~global_output_offset,In.ar(in+~global_input_offset,1));
 }).add;
 
 
@@ -46,12 +46,12 @@ SynthDef.new(\output,
 
 (
 ~ode2_input_offset = ~ode1_input_offset+~global_n_inputs;
-~ode2_output_offset = ~global_output_offset + 2;
-~y = Synth(\Hopf,[\input_offset,~ode2_input_offset,\output_offset,~ode2_output_offset ]);
+~ode2_output_offset = 2;
+~y = Synth(\Hopf,[\input_offset,~ode2_input_offset,\output_offset,~ode2_output_offset  ]);
 ~py1 = Synth(\param);
 ~py2 = Synth(\param);
 ~c1 = Synth.after(~y,\connect);
 ~py1.set(\val,1.0,\out,~ode2_input_offset + ~global_input_offset );
 ~py2.set(\val,10,\out,~ode2_input_offset + 1 +~global_input_offset );
-~c1.set(\in,~ode2_output_offset,\out,~ode1_input_offset+~global_input_offset )
+~c1.set(\in,~ode2_output_offset,\out,~ode1_input_offset)
 )
