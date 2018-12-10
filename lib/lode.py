@@ -8,6 +8,7 @@ import pathlib
 from time import sleep
 
 odes = {}
+groups = {}
 
 
 class MyEventHandler(pyinotify.ProcessEvent):
@@ -24,26 +25,54 @@ def yaml_parse(filename):
 
     for k, v in ode_config.items():
         if k not in odes:
-            ode = Ode({k: ode_config[k]})
-            ode.setup()
-            ode.set_server(DefaultServer)
-            ode.load_synth()
-            sleep(1)
-            n = ode.server.nextnodeID()
-            print('Node:', n)
-            ode.server.send('/s_new', [ode.Name, n])
-            odes[ode.name] = ode
+            ode = Ode(k)
+            if 'equation' in ode_config[k]:
+                ode.set_equation(ode_config[k]['equation'])
+                ode.set_default_parameters(ode_config[k]['parameters'])
+                ode.setup()
+                ode.load_synth()
+                sleep(1)
+                ode.create_synth()
+                ode.create_outputs(ode_config[k]['output'])
+                odes[ode.name] = ode
         else:
-            if ode_config[k]['equation'] == odes[k].config[k]['equation']:
-                print('No change')
-            else:
-                odes[k] = Ode({k: ode_config[k]})
-                odes[k].setup()
+            if 'equation' in ode_config[k]:
+                if ode_config[k]['equation'] == odes[k].equation:
+                    print('Eq no change')
+                else:
+                    print('Eq change')
+                    odes[k].set_equation(ode_config[k]['equation'])
+                    odes[k].set_default_parameters(ode_config[k]['parameters'])
+                    odes[k].setup()
+
+            if 'output' in ode_config[k]:
+                if ode_config[k]['output'] == odes[k].output:
+                    print('Output no change')
+                else:
+                    odes[k].update_outputs(ode_config[k]['output'])
+
+            if 'parameters' in ode_config[k]:
+                if ode_config[k]['parameters'] == odes[k].parameter_values:
+                    print('Param no change')
+                else:
+                    print('Param change')
+                    odes[k].update_parameters_value(ode_config[k]['parameters'])
 
 
 def main(args):
 
     odes_yaml = str(pathlib.Path(args.odes_yaml[0]).absolute())
+    Ode.set_server(DefaultServer)
+
+    # Groups creation
+    n_gen = DefaultServer.nextnodeID()
+    DefaultServer.send('/g_new', [n_gen])
+    groups['gen'] = n_gen
+    n_out = DefaultServer.nextnodeID()
+    DefaultServer.send('/g_new', [n_out, 1])
+    groups['out'] = n_out
+
+    Ode.set_groups(n_gen, n_out)
 
     if args.watch:
         wm = pyinotify.WatchManager()

@@ -1,10 +1,20 @@
 hopf:
   equation:
-    x: '2*pi*y*w + (e*x-x*(x*x+y*y))*100.0'
-    y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*100.0'
+    x: '2*pi*y*w + b*u*x +(e*x-x*(x*x+y*y))*100.0'
+    y: '-2*pi*x*w + b*v*y + (e*y-y*(x*x+y*y))*100.0'
+    u: '2*pi*v*f + (e*u-u*(u*u+v*v))*100.0'
+    v: '-2*pi*u*f + (e*v-v*(u*u+v*v))*100.0'
   parameters:
-    w: 440.0
-    e: 1.0
+    w: 200.0
+    f: 10.5
+    e: 10.0
+    a: 10.0
+    b: 0.0
+  output:
+    x: 
+      gain: 0.4
+    y:
+      gain: 0.4
 
 # lorenz:
 #   equation:

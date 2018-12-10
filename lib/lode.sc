@@ -1,3 +1,4 @@
+(
 s.waitForBoot{
 OSCFunc(
 	{
@@ -21,4 +22,20 @@ OSCFunc(
 	},
 	'/lode'
 );
-}
+
+	SynthDef.new(\param,
+		{| val=0, out=10|
+			val.postln;
+			Out.ar(out,DC.ar(1)*Lag.kr(val));
+	}).add;
+
+	SynthDef.new(\output,
+		{|bus=10, amp=1, pan=0|
+			Out.ar(0,Pan2.ar(In.ar(bus,1)*(amp**4),pan));
+	}).add;
+
+};
+
+
+)
+

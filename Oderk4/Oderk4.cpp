@@ -9,7 +9,7 @@ static InterfaceTable *ft;
 #define PI 3.141592653589793238462
 #define MAX_CHANNELS 8
 
-typedef  void (*equation_def)(float X[], float param[],float dX[]);
+typedef  void (*equation_def)(float X[], float t, float param[],float dX[]);
 
     
 // declare struct to hold unit generator state
@@ -19,6 +19,7 @@ struct Oderk4 : public Unit
     int m_string_size;
 
     float dt;
+    float t;
     float *X;
     float *param;
     float *F1, *F2, *F3, *F4, *xtemp;
@@ -43,8 +44,13 @@ void rk4(Oderk4* unit)
     //   param      Extra parameters passed to derivsRK
     // Output
     //   X          New value of X after a step of size dt
-
+    int n_eq = unit->N_EQ;
+    int i;
     float dt = unit->dt;
+    float t = unit->t;
+    float half_dt = 0.5*dt;
+    float t_half = t + half_dt;
+    float t_full = t + dt;
     float *F1, *F2, *F3, *F4, *Xtemp, *X, *param;
     F1 = unit->F1;
     F2 = unit->F2;
@@ -53,39 +59,26 @@ void rk4(Oderk4* unit)
     Xtemp = unit->xtemp;
     X = unit->X;
     param = unit->param;
-
-    int n_eq = unit->N_EQ;
-
+    
     //* Evaluate F1 = f(X,t).
-    unit->equation( X, F1, param);
+    unit->equation( X, t, F1, param);
     //* Evaluate F2 = f( X+dt*F1/2, t+dt/2 ).
-    float half_dt = 0.5*dt;
-    //float t_half = t + half_dt;
-    int i;
-
     for( i=0; i<n_eq; i++ )
         Xtemp[i] = X[i] + half_dt*F1[i];
-
-    unit->equation( Xtemp, F2, param);
-
+    unit->equation( Xtemp, t_half, F2, param);
     //* Evaluate F3 = f( X+dt*F2/2, t+dt/2 ).
     for( i=0; i<n_eq; i++ )
         Xtemp[i] = X[i] + half_dt*F2[i];
-
-    unit->equation( Xtemp, F3, param);
-
+    unit->equation( Xtemp, t_half, F3, param );
     //* Evaluate F4 = f( X+dt*F3, t+dt ).
-    //float t_full = t + dt;
-
     for( i=0; i<n_eq; i++ )
         Xtemp[i] = X[i] + dt*F3[i];
-
-    unit->equation( Xtemp, F4, param);
-
+    unit->equation( Xtemp, t_full, F4, param);
     //* Return X(t+dt) computed from fourth-order R-K.
     for( i=0; i<n_eq; i++ )
         X[i] += dt/6.*(F1[i] + F4[i] + 2.*(F2[i]+F3[i]));
 
+    unit->t = t_full;
 }
 
 
@@ -161,6 +154,7 @@ void Oderk4_Ctor(Oderk4* unit)
       unit->param = (float*) RTAlloc(unit->mWorld,unit->N_PARAMETERS*sizeof(float));
 
       unit->dt = SAMPLEDUR;
+      unit->t = 0;
 
       for(int k=0;k<unit->N_EQ;k++)
           unit->X[k] = 0.001;

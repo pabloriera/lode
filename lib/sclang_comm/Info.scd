@@ -2,6 +2,7 @@ OSCFunc(
     {
     arg msg, time, addr, port;
     addr.sendMsg("/lode/info",
+        Server.freeAll,
         Server.default.sampleRate,
         Server.default.actualSampleRate,
         Server.default.numSynths,

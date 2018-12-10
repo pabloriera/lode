@@ -5,5 +5,5 @@ SynthDef.new(\${Ode_name},
     "SynthDef:${Ode_name}".postln;
     osc = Oderk4.ar("${Ode_name}", $ode_arg_list )*amp;
     $outputs
-    Out.ar(0,Splay.ar(osc));
+    // Out.ar(0,Splay.ar(osc));
 }).add;
