@@ -31,10 +31,12 @@ OSCFunc(
 
 	SynthDef.new(\output,
 		{|bus=10, amp=1, pan=0|
-			Out.ar(0,Pan2.ar(In.ar(bus,1)*(amp**4),pan));
+			Out.ar(0,Pan2.ar(LeakDC.ar(In.ar(bus,1)*(VarLag.kr(amp,0.5)**4)),pan));
 	}).add;
 
 };
+
+
 
 
 )

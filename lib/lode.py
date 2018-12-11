@@ -33,7 +33,7 @@ def yaml_parse(filename):
                 ode.load_synth()
                 sleep(1)
                 ode.create_synth()
-                ode.create_outputs(ode_config[k]['output'])
+                ode.update_outputs(ode_config[k]['output'])
                 odes[ode.name] = ode
         else:
             if 'equation' in ode_config[k]:
@@ -49,13 +49,14 @@ def yaml_parse(filename):
                 if ode_config[k]['output'] == odes[k].output:
                     print('Output no change')
                 else:
+                    print('Output change')
                     odes[k].update_outputs(ode_config[k]['output'])
 
             if 'parameters' in ode_config[k]:
                 if ode_config[k]['parameters'] == odes[k].parameter_values:
-                    print('Param no change')
+                    print('Param Values no change')
                 else:
-                    print('Param change')
+                    print('Param Values change')
                     odes[k].update_parameters_value(ode_config[k]['parameters'])
 
 

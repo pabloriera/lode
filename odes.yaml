@@ -1,28 +1,51 @@
+# two_hopf:
+#   equation:
+#     x: '2*pi*y*w + b*u*x +(e*x-x*(x*x+y*y))*100.0'
+#     y: '-2*pi*x*w + b*v*y + (e*y-y*(x*x+y*y))*100.0'
+#     u: '2*pi*v*f + (e*u-u*(u*u+v*v))*100.0'
+#     v: '-2*pi*u*f + (e*v-v*(u*u+v*v))*100.0'
+#   parameters:
+#     w: 200.0
+#     f: 10.5
+#     e: 10.0
+#     a: 10.0
+#     b: 0.0
+#   output:
+#     x: 
+#       gain: 0.4
+#     y:
+#       gain: 0.4
+
 hopf:
   equation:
-    x: '2*pi*y*w + b*u*x +(e*x-x*(x*x+y*y))*100.0'
-    y: '-2*pi*x*w + b*v*y + (e*y-y*(x*x+y*y))*100.0'
-    u: '2*pi*v*f + (e*u-u*(u*u+v*v))*100.0'
-    v: '-2*pi*u*f + (e*v-v*(u*u+v*v))*100.0'
+    x: ' 2*pi*y*w + (a*sin(2*pi*f*t) + e*x-x*(x*x+y*y))*s'
+    y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
   parameters:
-    w: 200.0
-    f: 10.5
+    w: 400.0
     e: 10.0
+    f: 1.0
     a: 10.0
-    b: 0.0
+    s: 1000.0
   output:
     x: 
-      gain: 0.4
+      gain: 0.3
     y:
-      gain: 0.4
+      gain: 0.3
 
-# lorenz:
-#   equation:
-#     x: 'sigma*(y-x)*tau' 
-#     y: '(x*(rho-z)-y)*tau'
-#     z: '(x*y-beta*z)*tau'
-#   parameters:
-#     sigma: 10
-#     rho: 28
-#     beta: 2.6666
-#     tau: 50.0
+lorenz: 
+  equation:
+    x: 'sigma*(y-x)*tau' 
+    y: '(x*(rho-z)-y)*tau'
+    z: '(x*y-beta*z)*tau'
+  parameters:
+    sigma: 10
+    rho: 28
+    beta: 2.6666
+    tau: 200.0
+  output:
+    x: 
+      gain: 0.2
+      pan: 0
+
+
+

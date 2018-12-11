@@ -2,6 +2,7 @@ import formulas
 from string import Template
 import pathlib
 import sys
+from IPython import embed
 
 if sys.version_info[0] > 2:
 
