@@ -1,32 +1,37 @@
 (
+s.quit;
 s.waitForBoot{
-OSCFunc(
-	{
-		arg msg, time, addr, port;
-		var fn;
+	OSCFunc(
+		{
+			arg msg, time, addr, port;
+			var fn;
 
-		// Get local filename
+			// Get local filename
 
-		fn = msg[1].asString;
+			fn = msg[1].asString;
 
-		// Print a message to the user
+			// Print a message to the user
 
-		("Loading SynthDef from" + fn).postln;
+			("Loading SynthDef from" + fn).postln;
 
-		// Add SynthDef to file
+			// Add SynthDef to file
 
-		fn = File(fn, "r");
-		fn.readAllString.interpret;
-		fn.close;
+			fn = File(fn, "r");
+			fn.readAllString.interpret;
+			fn.close;
 
-	},
-	'/lode'
-);
+		},
+		'/lode'
+	);
+
+	SynthDef.new(\connect,
+		{| from=0, to=0, mul=1,add = 0|
+			Out.ar(to,InFeedback.ar(from,1)*mul+add);
+	}).add;
 
 	SynthDef.new(\param,
-		{| val=0, out=10|
-			val.postln;
-			Out.ar(out,DC.ar(1)*Lag.kr(val));
+		{| val=0, bus=10|
+			Out.ar(bus,DC.ar(1)*VarLag.kr(val,0.5));
 	}).add;
 
 	SynthDef.new(\output,
@@ -36,8 +41,8 @@ OSCFunc(
 
 };
 
-
-
-
 )
 
+~c2 = Synth(\connect,target: 1011);
+~c2.set(\from,12,\to,44,\add,0,\mul,5.0);
+~c2.free

@@ -11,13 +11,11 @@ static InterfaceTable *ft;
 
 typedef  void (*equation_def)(float X[], float t, float param[],float dX[]);
 
-    
 // declare struct to hold unit generator state
 struct Oderk4 : public Unit
 {
     char *m_string;   
     int m_string_size;
-
     float dt;
     float t;
     float *X;
@@ -27,6 +25,7 @@ struct Oderk4 : public Unit
 
     int N_EQ, N_PARAMETERS;
     bool ok = false;
+    void* handle;
 };
 
 void rk4(Oderk4* unit)
@@ -109,14 +108,8 @@ void Oderk4_Ctor(Oderk4* unit)
     SETCALC(Oderk4_next_a);
 
     unit->m_string_size = IN0(0); // number of chars in the id string
-    // unit->m_string = (char*)RTAlloc(unit->mWorld, unit->m_string_size * sizeof(char));
     unit->m_string = (char*)malloc(unit->m_string_size * sizeof(char)); 
-    // Print("m_string %s\n",unit->m_string);
-    // Print("string length %d\n", unit->m_string_size);
     for(int i = 0; i < unit->m_string_size; i++){
-        // char aux[1];
-        // aux[0]= (char)IN0(1+i);
-        // printf("letter %d: %s\n", i, aux);
         unit->m_string[i] = (char)IN0(1+i);
     };
     std::string ode_name(unit->m_string);
@@ -125,18 +118,16 @@ void Oderk4_Ctor(Oderk4* unit)
     std::string libname("odes/lib"+ode_name+".so");
     std::cout << "Ode name: " << ode_name << std::endl;
     std::cout << "Lib name: " << libname  << std::endl;
-    void* handle = dlopen(libname.c_str(), RTLD_LAZY);
+    unit->handle = dlopen(libname.c_str(), RTLD_LAZY);
     
-    if(handle!=NULL)
+    if(unit->handle!=NULL)
     {
-      Print("dl opened\n");
+      Print("%s: DLOPEN: ok\n", unit->m_string);
       void (*dimensions)(int*);
-      dimensions = ( void (*)(int*) ) dlsym(handle, "dimensions");
+      dimensions = ( void (*)(int*) ) dlsym(unit->handle, "dimensions");
       int dims[2];
       dimensions(dims);
-      printf("dimensions %d\t%d\n", dims[0],dims[1]);
-
-      unit->equation = ( equation_def ) dlsym(handle, "equation");      
+      unit->equation = ( equation_def ) dlsym(unit->handle, "equation");      
 
       unit->N_EQ = dims[0];
       unit->N_PARAMETERS = dims[1];
@@ -168,13 +159,14 @@ void Oderk4_Ctor(Oderk4* unit)
       for(int k=0;k<unit->N_EQ;k++)
       {
           OUT0(k) = unit->X[k];
+          Print("OUT %g\n", unit->X[k]);
       }
 
       unit->ok = true;
     }
     else
     {
-      Print("lib.so not open\n");
+      Print("DLOPEN: not ok\n");
       for(int k=0;k<MAX_CHANNELS;k++)
       {
           OUT0(k) = 0.0;
@@ -195,6 +187,9 @@ void Oderk4_Dtor(Oderk4* unit)
     RTFree(unit->mWorld, unit->F3 );
     RTFree(unit->mWorld, unit->F4 );
     RTFree(unit->mWorld, unit->xtemp );
+    Print("All Free\n");
+    dlclose(unit->handle);
+    Print("Closed\n");
   }
 }
 
@@ -206,16 +201,13 @@ void Oderk4_Dtor(Oderk4* unit)
 // calculation function for an audio rate frequency argument
 void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
 {
-
     for (int i=0; i < inNumSamples; ++i)
     {
         for(int k=0;k<unit->N_PARAMETERS;k++)
         {
             unit->param[k] = IN(unit->m_string_size+1+k)[i];
         }
-
         rk4( unit );
-
         for(int k=0;k<unit->N_EQ;k++)
         {
             OUT(k)[i] = zapgremlins(unit->X[k]);
@@ -252,5 +244,5 @@ PluginLoad(Oderk4)
     // InterfaceTable *inTable implicitly given as argument to the load function
     ft = inTable; // store pointer to InterfaceTable
 
-    DefineSimpleUnit(Oderk4);
+    DefineDtorUnit(Oderk4);
 }

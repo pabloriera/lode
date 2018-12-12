@@ -203,7 +203,7 @@ class SCLangServerManager(ServerManager):
         # Assign a valid OSC Client
         self.forward = None
 
-        self.node = 1000
+        self.node = 1010
         self.num_input_busses = 2
         self.num_output_busses = 2
         self.bus = self.num_input_busses + self.num_output_busses
