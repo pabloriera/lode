@@ -16,6 +16,20 @@ class MyEventHandler(pyinotify.ProcessEvent):
         yaml_parse(event.pathname)
 
 
+def groups_creation():
+    SynthDef.set_server(DefaultServer)
+    # Groups creation
+    n_conn = DefaultServer.nextnodeID()
+    DefaultServer.send('/g_new', [n_conn, 1])
+    n_param = DefaultServer.nextnodeID()
+    DefaultServer.send('/g_new', [n_param])
+    n_gen = DefaultServer.nextnodeID()
+    DefaultServer.send('/g_new', [n_gen, 1])
+    n_out = DefaultServer.nextnodeID()
+    DefaultServer.send('/g_new', [n_out, 1])
+    SynthDef.set_groups(n_conn, n_param, n_gen, n_out)
+
+
 def yaml_parse(filename):
     with open(filename, 'r') as fp:
         ode_config = yaml.load(fp)
@@ -67,21 +81,9 @@ def yaml_parse(filename):
 
 
 def main(args):
+    groups_creation()
 
     odes_yaml = str(pathlib.Path(args.odes_yaml[0]).absolute())
-    SynthDef.set_server(DefaultServer)
-
-    # Groups creation
-    n_conn = DefaultServer.nextnodeID()
-    DefaultServer.send('/g_new', [n_conn, 1])
-    n_param = DefaultServer.nextnodeID()
-    DefaultServer.send('/g_new', [n_param])
-    n_gen = DefaultServer.nextnodeID()
-    DefaultServer.send('/g_new', [n_gen, 1])
-    n_out = DefaultServer.nextnodeID()
-    DefaultServer.send('/g_new', [n_out, 1])
-
-    SynthDef.set_groups(n_conn, n_param, n_gen, n_out)
 
     if args.watch:
         wm = pyinotify.WatchManager()

@@ -42,7 +42,11 @@ s.waitForBoot{
 };
 
 )
-
-~c2 = Synth(\connect,target: 1011);
-~c2.set(\from,12,\to,44,\add,0,\mul,5.0);
-~c2.free
+//
+// ~c2 = Synth(\connect,target: 1011);
+// ~c2.set(\from,12,\to,44,\add,0,\mul,5.0);
+// ~c2.free
+//
+// ~c2 = Synth(\connect,target: 1011);
+// ~c2.set(\from,12,\to,44,\add,0,\mul,5.0);
+// ~c2.free
