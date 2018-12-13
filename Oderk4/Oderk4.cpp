@@ -27,7 +27,7 @@ static InterfaceTable *ft;
 // declare struct to hold unit generator state
 struct Oderk4 : public Unit
 {
-    char *m_string;   
+    char *m_string;
     int m_string_size;
     int N_EQ, N_PARAMETERS;
     int c=0;
@@ -128,11 +128,10 @@ void Oderk4_Ctor(Oderk4* unit)
     // printf("calc_FullRate %d\n",calc_FullRate);
 
     // 1. set the calculation function.
-    int modRate = calc_BufRate;
     SETCALC(Oderk4_next_a);
 
     unit->m_string_size = IN0(0); // number of chars in the id string
-    unit->m_string = (char*)malloc(unit->m_string_size * sizeof(char)); 
+    unit->m_string = (char*)RTAlloc(unit->m_string_size * sizeof(char)); 
     for(int i = 0; i < unit->m_string_size; i++){
         unit->m_string[i] = (char)IN0(1+i);
     };
@@ -221,7 +220,7 @@ void Oderk4_Dtor(Oderk4* unit)
     Print("%s: All Free\n", unit->m_string);
     dlclose(unit->handle);
     Print("%s: Closed\n", unit->m_string);
-    free(unit->m_string);
+    RTFree(unit->m_string);
   }
 }
 
