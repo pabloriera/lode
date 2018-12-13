@@ -131,7 +131,7 @@ void Oderk4_Ctor(Oderk4* unit)
     SETCALC(Oderk4_next_a);
 
     unit->m_string_size = IN0(0); // number of chars in the id string
-    unit->m_string = (char*)RTAlloc(unit->m_string_size * sizeof(char)); 
+    unit->m_string = (char*)RTAlloc(unit->mWorld, unit->m_string_size * sizeof(char));
     for(int i = 0; i < unit->m_string_size; i++){
         unit->m_string[i] = (char)IN0(1+i);
     };
@@ -220,7 +220,7 @@ void Oderk4_Dtor(Oderk4* unit)
     Print("%s: All Free\n", unit->m_string);
     dlclose(unit->handle);
     Print("%s: Closed\n", unit->m_string);
-    RTFree(unit->m_string);
+    RTFree(unit->mWorld, unit->m_string);
   }
 }
 
