@@ -11,7 +11,7 @@
     (lhs) = (typeof(lhs)) RTAlloc(unit->mWorld, (size));            \
     memset((lhs), 0, (size));                                       \
     if (!(lhs)) {                                                   \
-      SETCALC(ft->fClearUnitOutputs);                               \
+      SETCALC(ClearUnitOutputs);                                    \
       ClearUnitOutputs(unit, 1);                                    \
       if (unit->mWorld->mVerbosity > -2) {                          \
           Print("Failed to allocate memory for Oderk4 ugen.\n");    \
@@ -127,9 +127,10 @@ void Oderk4_Ctor(Oderk4* unit)
     // printf("mBufLength %d\n",unit->mBufLength );
     // printf("calc_FullRate %d\n",calc_FullRate);
 
-    // 1. set the calculation function.
+    // set the calculation function.
     SETCALC(Oderk4_next_a);
 
+    unit->c = 0;
     unit->m_string_size = IN0(0); // number of chars in the id string
     unit->m_string = (char*) RTAlloc(unit->mWorld, (unit->m_string_size + 1) * sizeof(char));
     for(int i = 0; i < unit->m_string_size; i++){
@@ -143,7 +144,7 @@ void Oderk4_Ctor(Oderk4* unit)
     std::cout << "Ode name: " << ode_name << std::endl;
     std::cout << "Lib name: " << libname  << std::endl;
     unit->handle = dlopen(libname.c_str(), RTLD_LAZY);
-    
+
     if(unit->handle!=NULL)
     {
       Print("%s: DLOPEN: ok\n", unit->m_string);
@@ -185,32 +186,27 @@ void Oderk4_Ctor(Oderk4* unit)
           Print("%s: OUT %g\n", unit->m_string, unit->X[k]);
       }
 
+      Print("%s: Before first next", unit->m_string);
+      for(int k=0;k<unit->N_EQ;k++)
+          Print("X[%d]=%g\t", k ,unit->X[k] );
+      Print("\n");
+
+      Oderk4_next_a(unit, 1);
+
+      Print("%s: After first next", unit->m_string);
+      for(int k=0;k<unit->N_EQ;k++)
+          Print("X[%d]=%g\t", k ,unit->X[k] );
+      Print("\n");
+
       unit->ok = true;
     }
     else
     {
+      SETCALC(ClearUnitOutputs);
+      ClearUnitOutputs(unit, 1);
+
       Print("%s: DLOPEN: not ok\n", unit->m_string);
-      for(int k=0;k<MAX_CHANNELS;k++)
-      {
-          OUT0(k) = 0.0;
-      }
     }
-
-    
-    Print("%s: Before first next", unit->m_string);
-    for(int k=0;k<unit->N_EQ;k++)
-      Print("X[%d]=%g\t", k ,unit->X[k] );
-    Print("\n");
-    
-
-    Oderk4_next_a(unit, 1);
-
-    
-    Print("%s: After first next", unit->m_string);
-    for(int k=0;k<unit->N_EQ;k++)
-      Print("X[%d]=%g\t", k ,unit->X[k] );
-    Print("\n");
-    
 }
 
 void Oderk4_Dtor(Oderk4* unit)
@@ -243,8 +239,8 @@ void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
       if(std::isnan(unit->X[k]))
       {
           Print("\n\nX[%d] is nan before rk4\n\n",k);
-          Oderk4_Dtor(unit);
-          break;
+          SETCALC(ClearUnitOutputs);
+          return;
       }
 
 
@@ -275,10 +271,13 @@ void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
         //Print("\n");
     }
 
-    // unit->c = unit->c + 1;
-    //Print("%d\n", unit->c);
-    // if (unit->c == 2)
-      // Oderk4_Dtor(unit);
+    unit->c = unit->c + 1;
+    Print("%d\n", unit->c);
+    if (unit->c == 2) {
+      Print("c reached 2, quitting...\n");
+      SETCALC(ClearUnitOutputs);
+      return;
+    }
 }
 
 //////////////////////////////////////////////////////////////////
