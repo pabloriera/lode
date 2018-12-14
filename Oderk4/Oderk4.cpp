@@ -131,10 +131,11 @@ void Oderk4_Ctor(Oderk4* unit)
     SETCALC(Oderk4_next_a);
 
     unit->m_string_size = IN0(0); // number of chars in the id string
-    unit->m_string = (char*)RTAlloc(unit->mWorld, unit->m_string_size * sizeof(char));
+    unit->m_string = (char*) RTAlloc(unit->mWorld, (unit->m_string_size + 1) * sizeof(char));
     for(int i = 0; i < unit->m_string_size; i++){
         unit->m_string[i] = (char)IN0(1+i);
     };
+    unit->m_string[unit->m_string_size] = 0;  // terminate string
     std::string ode_name(unit->m_string);
     // Print("Ode name %s\n",unit->m_string);
     // Print("Ode name %s\n",ode_name.c_str());
