@@ -196,15 +196,21 @@ void Oderk4_Ctor(Oderk4* unit)
       }
     }
 
+    /*
     Print("%s: Ctor", unit->m_string);
     for(int k=0;k<unit->N_EQ;k++)
       Print("X[%d]=%g\t", k ,unit->X[k] );
     Print("\n");
+    */
+
     Oderk4_next_a(unit, 1);
+
+    /*
     Print("%s: Ctor", unit->m_string);
     for(int k=0;k<unit->N_EQ;k++)
       Print("X[%d]=%g\t", k ,unit->X[k] );
     Print("\n");
+    */
 }
 
 void Oderk4_Dtor(Oderk4* unit)
@@ -235,33 +241,33 @@ void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
 {
     for (int i=0; i < inNumSamples; ++i)
     {
-        Print("%s %d: ", unit->m_string, i);
-        for(int k=0;k<unit->N_EQ;k++)
-          Print("X[%d]=%g\t", k ,unit->X[k] );
+        //Print("%s %d: ", unit->m_string, i);
+        //for(int k=0;k<unit->N_EQ;k++)
+          //Print("X[%d]=%g\t", k ,unit->X[k] );
         
-        Print("\n");
-        Print("%s %d: ", unit->m_string, i);
+        //Print("\n");
+        //Print("%s %d: ", unit->m_string, i);
         
         for(int k=0;k<unit->N_PARAMETERS;k++)
         {
-          Print("param[%d]=%g\t", k ,IN(unit->m_string_size+1+k)[i] );
+          //Print("param[%d]=%g\t", k ,IN(unit->m_string_size+1+k)[i] );
           unit->param[k] = zapgremlins(IN(unit->m_string_size+1+k)[i]);          
         }
         rk4( unit );
     
-        Print("\n");
-        Print("%s %d: ", unit->m_string, i);
+        //Print("\n");
+        //Print("%s %d: ", unit->m_string, i);
     
         for(int k=0;k<unit->N_EQ;k++)
         {
-          Print("out[%d]=%g\t", k ,unit->X[k] );
+          //Print("out[%d]=%g\t", k ,unit->X[k] );
           OUT(k)[i] = zapgremlins(unit->X[k]);
         }
-        Print("\n");
+        //Print("\n");
     }
 
     unit->c = unit->c + 1;
-    Print("%d\n", unit->c);
+    //Print("%d\n", unit->c);
     if (unit->c == 2)
       Oderk4_Dtor(unit);
 }
