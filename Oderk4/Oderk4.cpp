@@ -239,6 +239,15 @@ void Oderk4_Dtor(Oderk4* unit)
 // calculation function for an audio rate frequency argument
 void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
 {
+    for(int k=0;k<unit->N_EQ;k++)
+      if(std::isnan(unit->X[k]))
+      {
+          Print("\n\nX[%d] is nan\n\n",k);
+          Oderk4_Dtor(unit);
+          break;
+      }
+
+
     for (int i=0; i < inNumSamples; ++i)
     {
         //Print("%s %d: ", unit->m_string, i);
@@ -266,10 +275,10 @@ void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
         //Print("\n");
     }
 
-    unit->c = unit->c + 1;
+    // unit->c = unit->c + 1;
     //Print("%d\n", unit->c);
-    if (unit->c == 2)
-      Oderk4_Dtor(unit);
+    // if (unit->c == 2)
+      // Oderk4_Dtor(unit);
 }
 
 //////////////////////////////////////////////////////////////////
