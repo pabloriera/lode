@@ -196,21 +196,21 @@ void Oderk4_Ctor(Oderk4* unit)
       }
     }
 
-    /*
-    Print("%s: Ctor", unit->m_string);
+    
+    Print("%s: Before first next", unit->m_string);
     for(int k=0;k<unit->N_EQ;k++)
       Print("X[%d]=%g\t", k ,unit->X[k] );
     Print("\n");
-    */
+    
 
     Oderk4_next_a(unit, 1);
 
-    /*
-    Print("%s: Ctor", unit->m_string);
+    
+    Print("%s: After first next", unit->m_string);
     for(int k=0;k<unit->N_EQ;k++)
       Print("X[%d]=%g\t", k ,unit->X[k] );
     Print("\n");
-    */
+    
 }
 
 void Oderk4_Dtor(Oderk4* unit)
@@ -242,7 +242,7 @@ void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
     for(int k=0;k<unit->N_EQ;k++)
       if(std::isnan(unit->X[k]))
       {
-          Print("\n\nX[%d] is nan\n\n",k);
+          Print("\n\nX[%d] is nan before rk4\n\n",k);
           Oderk4_Dtor(unit);
           break;
       }
