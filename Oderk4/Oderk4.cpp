@@ -204,7 +204,6 @@ void Oderk4_Ctor(Oderk4* unit)
     {
       SETCALC(ClearUnitOutputs);
       ClearUnitOutputs(unit, 1);
-
       Print("%s: DLOPEN: not ok\n", unit->m_string);
     }
 }
@@ -235,49 +234,29 @@ void Oderk4_Dtor(Oderk4* unit)
 // calculation function for an audio rate frequency argument
 void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
 {
+    unit->c = unit->c + 1;
     for(int k=0;k<unit->N_EQ;k++)
       if(std::isnan(unit->X[k]))
       {
-          Print("\n\nX[%d] is nan before rk4\n\n",k);
+          Print("\n\nX[%d] is nan before rk4 in step %d\n\n",k, unit->c);
           SETCALC(ClearUnitOutputs);
           return;
       }
 
-
     for (int i=0; i < inNumSamples; ++i)
     {
-        //Print("%s %d: ", unit->m_string, i);
-        //for(int k=0;k<unit->N_EQ;k++)
-          //Print("X[%d]=%g\t", k ,unit->X[k] );
-        
-        //Print("\n");
-        //Print("%s %d: ", unit->m_string, i);
-        
         for(int k=0;k<unit->N_PARAMETERS;k++)
         {
-          //Print("param[%d]=%g\t", k ,IN(unit->m_string_size+1+k)[i] );
           unit->param[k] = zapgremlins(IN(unit->m_string_size+1+k)[i]);          
         }
         rk4( unit );
-    
-        //Print("\n");
-        //Print("%s %d: ", unit->m_string, i);
-    
+
         for(int k=0;k<unit->N_EQ;k++)
         {
-          //Print("out[%d]=%g\t", k ,unit->X[k] );
           OUT(k)[i] = zapgremlins(unit->X[k]);
         }
-        //Print("\n");
     }
 
-    unit->c = unit->c + 1;
-    Print("%d\n", unit->c);
-    if (unit->c == 2) {
-      Print("c reached 2, quitting...\n");
-      SETCALC(ClearUnitOutputs);
-      return;
-    }
 }
 
 //////////////////////////////////////////////////////////////////
