@@ -19,11 +19,12 @@
 # vdp:
 #   reset:  
 #   equation:
-#     x: '2*pi*y*w + x[-d]'
+#     x: '2*pi*y*w + d'
 #     y: '-2*pi*x*w+ u*(1-x*x)*y'
 #   parameters:
 #     u: 1000.0
 #     w: 200.0
+#     d: 0.0
 #   output:
 #     x: 
 #       gain: 0.4
@@ -39,7 +40,7 @@
 #     sigma: 11
 #     rho: 28
 #     beta: 2.6666
-#     tau: 100.0
+#     tau: 10.0
 #   output:
 #     y: 
 #       gain: 0.4
@@ -54,7 +55,7 @@
 #     tau: 100.0
 #   output:
 #     y: 
-#       gain: 0.4
+#       gain: 0.3
 #       pan: 0
 
 
@@ -63,10 +64,10 @@
 #     x: ' 2*pi*y*w + (a*sin(2*pi*f*t) + e*x-x*(x*x+y*y))*s'
 #     y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
 #   parameters:
-#     w: 300 + lorenz.x*10
-#     e: 40.0
-#     f: 0.5
-#     a: 1.0
+#     w: 300
+#     e: 20.0
+#     f: 5.0
+#     a: 20.0
 #     s: 1000.0
 #   output:
 #     x: 
@@ -75,26 +76,26 @@
 #       gain: 0.5
 
 
-hopf:
-  equation:
-    x: ' 2*pi*y*w + (e*x-x*(x*x+y*y))*s'
-    y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
-  parameters:
-    w: 500 # + lorenz.x*10
-    e: 1.0
-    s: 100.0
-  output:
-    x: 
-      gain: 0.4
-    y:
-      gain: 0.4
+# hopf:
+#   equation:
+#     x: ' 2*pi*y*w + (e*x-x*(x*x+y*y))*s'
+#     y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
+#   parameters:
+#     w: 800 + lorenz.x*10
+#     e: 2.0
+#     s: 100.0
+#   output:
+#     x: 
+#       gain: 0.4
+#     y:
+#       gain: 0.4
 
 # hopf2:
 #   equation:
 #     x: ' 2*pi*y*w + (e*x-x*(x*x+y*y))*s'
 #     y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
 #   parameters:
-#     w: 600 # + lorenz.x*10
+#     w: 100 + lorenz.y*100
 #     e: 1.0
 #     s: 100.0
 #   output:

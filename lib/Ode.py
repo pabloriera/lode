@@ -106,7 +106,7 @@ class Ode(SynthDef):
         self.subsitute_and_build()
         # sleep(sleep_time)
         self.load_synth()
-        sleep(sleep_time*2)
+        sleep(sleep_time * 2)
         self.create_synth()
         sleep(sleep_time)
         self.create_outputs(config['output'])
@@ -226,7 +226,7 @@ class Ode(SynthDef):
             for i, x in enumerate(self.variables):
                 eq = re.sub(r'\b' + x + r'\b', '#[{}]'.format(i), eq, flags=re.IGNORECASE)
             eq = eq.replace('#', 'X')
-            eq = 'dX[{}]='.format(j) + eq
+            eq = 'dX[{}]='.format(self.variables.index(k)) + eq
             equation_str.append(eq)
 
         self.equation_str = ';\n    '.join(equation_str) + ';'
