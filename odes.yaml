@@ -80,7 +80,7 @@ hopf:
     x: ' 2*pi*y*w + (e*x-x*(x*x+y*y))*s'
     y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
   parameters:
-    w: 200 # + lorenz.x*10
+    w: 500 # + lorenz.x*10
     e: 1.0
     s: 100.0
   output:
@@ -88,3 +88,17 @@ hopf:
       gain: 0.4
     y:
       gain: 0.4
+
+# hopf2:
+#   equation:
+#     x: ' 2*pi*y*w + (e*x-x*(x*x+y*y))*s'
+#     y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
+#   parameters:
+#     w: 600 # + lorenz.x*10
+#     e: 1.0
+#     s: 100.0
+#   output:
+#     x: 
+#       gain: 0.4
+#     y:
+#       gain: 0.4

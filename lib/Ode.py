@@ -106,7 +106,7 @@ class Ode(SynthDef):
         self.subsitute_and_build()
         # sleep(sleep_time)
         self.load_synth()
-        sleep(sleep_time)
+        sleep(sleep_time*2)
         self.create_synth()
         sleep(sleep_time)
         self.create_outputs(config['output'])

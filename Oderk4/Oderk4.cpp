@@ -14,12 +14,12 @@
       SETCALC(ClearUnitOutputs);                                    \
       ClearUnitOutputs(unit, 1);                                    \
       if (unit->mWorld->mVerbosity > -2) {                          \
-          Print("Failed to allocate memory for Oderk4 ugen.\n");    \
+          Print("Failed to allocate memory for Oderk4 ugen.");    \
       }                                                             \
       return;                                                       \
     }
 
-typedef  void (*equation_def)(float X[], float t, float param[],float dX[]);
+typedef  void (*equation_def)(float X[], float t, float dX[], float param[]);
 
 // InterfaceTable contains pointers to functions in the host (server).
 static InterfaceTable *ft;
@@ -72,38 +72,25 @@ void rk4(Oderk4* unit)
     X = unit->X;
     param = unit->param;
     
-    // Print("\n"); 
-    // for( i=0; i<n_eq; i++ )
-    //   if(std::isnan(X[i]))
-    //       Print("%d: Xpre isnan\t",i);
-    
-    //* Evaluate F1 = f(X,t).
+    // Evaluate F1 = f(X,t).
     unit->equation( X, t, F1, param);
-    //* Evaluate F2 = f( X+dt*F1/2, t+dt/2 ).
     for( i=0; i<n_eq; i++ )
-    {
-        // if(std::isnan(X[i]))
-          // Print("%d: Xpos isnan\t",i);
         Xtemp[i] = X[i] + half_dt*F1[i];
-        // if(std::isnan(Xtemp[i]))
-          // Print("%d: F1=%g\tF2=%g\tF3=%g\tF4=%g\t", i, F1[i], F2[i], F3[i], F4[i] );
-    }
-    unit->equation( Xtemp, t_half, F2, param);
-    //* Evaluate F3 = f( X+dt*F2/2, t+dt/2 ).
+    // Evaluate F2 = f( X+dt*F1/2, t+dt/2 ).      
+    unit->equation( Xtemp, t_half, F2, param);   
     for( i=0; i<n_eq; i++ )
         Xtemp[i] = X[i] + half_dt*F2[i];
+    // Evaluate F3 = f( X+dt*F2/2, t+dt/2 ).
     unit->equation( Xtemp, t_half, F3, param );
-    //* Evaluate F4 = f( X+dt*F3, t+dt ).
     for( i=0; i<n_eq; i++ )
         Xtemp[i] = X[i] + dt*F3[i];
+    // Evaluate F4 = f( X+dt*F3, t+dt ).
     unit->equation( Xtemp, t_full, F4, param);
-    //* Return X(t+dt) computed from fourth-order R-K.
+    // Return X(t+dt) computed from fourth-order R-K.
     for( i=0; i<n_eq; i++ )
       X[i] += dt/6.*(F1[i] + F4[i] + 2.*(F2[i]+F3[i]));
-    // Print("%d: F1=%g\tF2=%g\tF3=%g\tF4=%g\t", i, F1[i], F2[i], F3[i], F4[i] );
     unit->t = t_full;
 }
-
 
 // declare unit generator functions
 static void Oderk4_next_a(Oderk4 *unit, int inNumSamples);
@@ -122,10 +109,10 @@ static void Oderk4_Dtor(Oderk4* unit);
 // 3. calculate one sample of output.
 void Oderk4_Ctor(Oderk4* unit)
 {
-    printf("Oderk4 v0.2\n");
-    // printf("SAMPLEDUR %g\n",SAMPLEDUR);
-    // printf("mBufLength %d\n",unit->mBufLength );
-    // printf("calc_FullRate %d\n",calc_FullRate);
+    printf("Oderk4 v0.2");
+    // printf("SAMPLEDUR %g",SAMPLEDUR);
+    // printf("mBufLength %d",unit->mBufLength );
+    // printf("calc_FullRate %d",calc_FullRate);
 
     // set the calculation function.
     SETCALC(Oderk4_next_a);
@@ -138,8 +125,8 @@ void Oderk4_Ctor(Oderk4* unit)
     };
     unit->m_string[unit->m_string_size] = 0;  // terminate string
     std::string ode_name(unit->m_string);
-    // Print("Ode name %s\n",unit->m_string);
-    // Print("Ode name %s\n",ode_name.c_str());
+    // Print("Ode name %s",unit->m_string);
+    // Print("Ode name %s",ode_name.c_str());
     std::string libname("odes/lib"+ode_name+".so");
     std::cout << "Ode name: " << ode_name << std::endl;
     std::cout << "Lib name: " << libname  << std::endl;
@@ -147,7 +134,7 @@ void Oderk4_Ctor(Oderk4* unit)
 
     if(unit->handle!=NULL)
     {
-      Print("%s: DLOPEN: ok\n", unit->m_string);
+      Print("%s: DLOPEN: ok", unit->m_string);
       void (*dimensions)(int*);
       dimensions = ( void (*)(int*) ) dlsym(unit->handle, "dimensions");
       int dims[2];
@@ -157,8 +144,8 @@ void Oderk4_Ctor(Oderk4* unit)
       unit->N_EQ = dims[0];
       unit->N_PARAMETERS = dims[1];
 
-      Print("%s: N_PARAMETERS %d\n", unit->m_string,unit->N_PARAMETERS);
-      Print("%s: N_EQ %d\n", unit->m_string,unit->N_EQ);
+      Print("%s: N_PARAMETERS %d", unit->m_string,unit->N_PARAMETERS);
+      Print("%s: N_EQ %d", unit->m_string,unit->N_EQ);
 
       RTALLOC_AND_CHECK(unit->F1, unit->N_EQ * sizeof(float));
       RTALLOC_AND_CHECK(unit->F2, unit->N_EQ * sizeof(float));
@@ -177,34 +164,35 @@ void Oderk4_Ctor(Oderk4* unit)
       for(int k=0;k<unit->N_PARAMETERS;k++)
       {
           unit->param[k] = IN0(unit->m_string_size+1+k);
-          Print("%s: PARAM %g\n", unit->m_string, unit->param[k]);
+          Print("%s: PARAM %g", unit->m_string, unit->param[k]);
       }
 
       for(int k=0;k<unit->N_EQ;k++)
       {
           OUT0(k) = unit->X[k];
-          Print("%s: OUT %g\n", unit->m_string, unit->X[k]);
+          Print("%s: OUT %g", unit->m_string, unit->X[k]);
       }
 
-      Print("%s: Before first next", unit->m_string);
-      for(int k=0;k<unit->N_EQ;k++)
-          Print("X[%d]=%g\t", k ,unit->X[k] );
-      Print("\n");
+      // Print("%s: Before first next", unit->m_string);
+      // for(int k=0;k<unit->N_EQ;k++)
+      //     Print("X[%d]=%g\t", k ,unit->X[k] );
+      // Print("");
 
-      Oderk4_next_a(unit, 1);
+      // Oderk4_next_a(unit, 1);
 
-      Print("%s: After first next", unit->m_string);
-      for(int k=0;k<unit->N_EQ;k++)
-          Print("X[%d]=%g\t", k ,unit->X[k] );
-      Print("\n");
+      // Print("%s: After first next", unit->m_string);
+      // for(int k=0;k<unit->N_EQ;k++)
+      //     Print("X[%d]=%g\t", k ,unit->X[k] );
+      // Print("");
 
       unit->ok = true;
     }
     else
     {
+      unit->ok = false; 
       SETCALC(ClearUnitOutputs);
       ClearUnitOutputs(unit, 1);
-      Print("%s: DLOPEN: not ok\n", unit->m_string);
+      Print("%s: DLOPEN: not ok", unit->m_string);
     }
 }
 
@@ -219,9 +207,9 @@ void Oderk4_Dtor(Oderk4* unit)
     RTFree(unit->mWorld, unit->F3 );
     RTFree(unit->mWorld, unit->F4 );
     RTFree(unit->mWorld, unit->xtemp );
-    Print("%s: All Free\n", unit->m_string);
+    Print("%s: All Free", unit->m_string);
     dlclose(unit->handle);
-    Print("%s: Closed\n", unit->m_string);
+    Print("%s: Closed", unit->m_string);
     RTFree(unit->mWorld, unit->m_string);
   }
 }
@@ -234,14 +222,47 @@ void Oderk4_Dtor(Oderk4* unit)
 // calculation function for an audio rate frequency argument
 void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
 {
+    bool crash = false;
     unit->c = unit->c + 1;
     for(int k=0;k<unit->N_EQ;k++)
+    {
       if(std::isnan(unit->X[k]))
       {
-          Print("\n\nX[%d] is nan before rk4 in step %d\n\n",k, unit->c);
-          SETCALC(ClearUnitOutputs);
-          return;
+        Print("X[%d] is nan before rk4 in step %d\n",k, unit->c);
+        crash = true;
       }
+      // if(std::isnan(unit->xtemp[k]))
+      // {
+      //   Print("xtemp[%d] is nan before rk4 in step %d\n",k, unit->c);
+      //   crash = true;
+      // }
+      // if(std::isnan(unit->F1[k]))
+      // {
+      //   Print("F1[%d] is nan before rk4 in step %d\n",k, unit->c);
+      //   crash = true;
+      // }
+      // if(std::isnan(unit->F2[k]))
+      // {
+      //   Print("F2[%d] is nan before rk4 in step %d\n",k, unit->c);
+      //   crash = true;
+      // }
+      // if(std::isnan(unit->F3[k]))
+      // {
+      //   Print("F3[%d] is nan before rk4 in step %d\n",k, unit->c);
+      //   crash = true;
+      // }
+      // if(std::isnan(unit->F4[k]))
+      // {
+      //   Print("F4[%d] is nan before rk4 in step %d\n",k, unit->c);
+      //   crash = true;
+      // }
+    }
+
+    if(crash)
+    {
+      SETCALC(ClearUnitOutputs);
+      return;
+    }
 
     for (int i=0; i < inNumSamples; ++i)
     {
@@ -250,7 +271,6 @@ void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
           unit->param[k] = zapgremlins(IN(unit->m_string_size+1+k)[i]);          
         }
         rk4( unit );
-
         for(int k=0;k<unit->N_EQ;k++)
         {
           OUT(k)[i] = zapgremlins(unit->X[k]);

@@ -2,6 +2,7 @@
 export SC_PATH=/usr/local/include/SuperCollider/
 ODERK4_CLASS_PATH=$HOME'/.local/share/SuperCollider/Extensions/Oderk4/classes/'
 ODERK4_PLUGIN_PATH=$HOME'/.local/share/SuperCollider/Extensions/Oderk4/plugins/'
+rm -rf build
 mkdir build
 cd build
 cmake ..
