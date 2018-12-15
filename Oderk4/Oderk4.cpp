@@ -19,7 +19,7 @@
       return;                                                       \
     }
 
-typedef  void (*equation_def)(float X[], float t, float dX[], float param[]);
+typedef  void (*equation_def)(double X[], double t, double dX[], double param[]);
 
 // InterfaceTable contains pointers to functions in the host (server).
 static InterfaceTable *ft;
@@ -34,11 +34,11 @@ struct Oderk4 : public Unit
     bool ok = false;
     equation_def equation;
     void* handle;
-    float dt;
-    float t;
-    float *X;
-    float *param;
-    float *F1, *F2, *F3, *F4, *xtemp;    
+    double dt;
+    double t;
+    double *X;
+    double *param;
+    double *F1, *F2, *F3, *F4, *xtemp;
 };
 
 void rk4(Oderk4* unit)
@@ -58,12 +58,12 @@ void rk4(Oderk4* unit)
     //   X          New value of X after a step of size dt
     int n_eq = unit->N_EQ;
     int i;
-    float dt = unit->dt;
-    float t = unit->t;
-    float half_dt = 0.5*dt;
-    float t_half = t + half_dt;
-    float t_full = t + dt;
-    float *F1, *F2, *F3, *F4, *Xtemp, *X, *param;
+    double dt = unit->dt;
+    double t = unit->t;
+    double half_dt = 0.5*dt;
+    double t_half = t + half_dt;
+    double t_full = t + dt;
+    double *F1, *F2, *F3, *F4, *Xtemp, *X, *param;
     F1 = unit->F1;
     F2 = unit->F2;
     F3 = unit->F3;
@@ -147,13 +147,13 @@ void Oderk4_Ctor(Oderk4* unit)
       Print("%s: N_PARAMETERS %d", unit->m_string,unit->N_PARAMETERS);
       Print("%s: N_EQ %d", unit->m_string,unit->N_EQ);
 
-      RTALLOC_AND_CHECK(unit->F1, unit->N_EQ * sizeof(float));
-      RTALLOC_AND_CHECK(unit->F2, unit->N_EQ * sizeof(float));
-      RTALLOC_AND_CHECK(unit->F3, unit->N_EQ * sizeof(float));
-      RTALLOC_AND_CHECK(unit->F4, unit->N_EQ * sizeof(float));
-      RTALLOC_AND_CHECK(unit->xtemp, unit->N_EQ * sizeof(float));
-      RTALLOC_AND_CHECK(unit->X, unit->N_EQ * sizeof(float));
-      RTALLOC_AND_CHECK(unit->param, unit->N_PARAMETERS * sizeof(float));
+      RTALLOC_AND_CHECK(unit->F1, unit->N_EQ * sizeof(double));
+      RTALLOC_AND_CHECK(unit->F2, unit->N_EQ * sizeof(double));
+      RTALLOC_AND_CHECK(unit->F3, unit->N_EQ * sizeof(double));
+      RTALLOC_AND_CHECK(unit->F4, unit->N_EQ * sizeof(double));
+      RTALLOC_AND_CHECK(unit->xtemp, unit->N_EQ * sizeof(double));
+      RTALLOC_AND_CHECK(unit->X, unit->N_EQ * sizeof(double));
+      RTALLOC_AND_CHECK(unit->param, unit->N_PARAMETERS * sizeof(double));
 
       unit->dt = SAMPLEDUR;
       unit->t = 0;

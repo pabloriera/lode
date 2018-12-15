@@ -13,7 +13,7 @@ extern "C"
         x[1] = N_PARAMETERS;
     }
 
-    void equation(float X[], float t, float dX[], float param[])
+    void equation(double X[], double t, double dX[], double param[])
     {
     $EQUATION
 
