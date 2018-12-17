@@ -24,27 +24,27 @@
 #   parameters:
 #     u: 1000.0
 #     w: 200.0
-#     d: 0.0
+#     d: 0
 #   output:
 #     x: 
 #       gain: 0.4
 #     y:
 #       gain: 0.4
 
-# lorenz: &lorenz
-#   equation:
-#     x: 'sigma*(y-x)*tau' 
-#     y: '(x*(rho-z)-y)*tau'
-#     z: '(x*y-beta*z)*tau'
-#   parameters:
-#     sigma: 11
-#     rho: 28
-#     beta: 2.6666
-#     tau: 10.0
-#   output:
-#     y: 
-#       gain: 0.4
-#       pan: 0
+lorenz: &lorenz
+  equation:
+    x: 'sigma*(y-x)*tau' 
+    y: '(x*(rho-z)-y)*tau'
+    z: '(x*y-beta*z)*tau'
+  parameters:
+    sigma: 11
+    rho: 28
+    beta: 2.6666
+    tau: 5.0
+  output:
+    y: 
+      gain: 0.4
+      pan: 0
 
 # lorenz2: 
 #   <<: *lorenz
@@ -76,30 +76,30 @@
 #       gain: 0.5
 
 
-# hopf:
-#   equation:
-#     x: ' 2*pi*y*w + (e*x-x*(x*x+y*y))*s'
-#     y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
-#   parameters:
-#     w: 800 + lorenz.x*10
-#     e: 2.0
-#     s: 100.0
-#   output:
-#     x: 
-#       gain: 0.4
-#     y:
-#       gain: 0.4
+hopf:
+  equation:
+    x: ' 2*pi*y*w + (e*x-x*(x*x+y*y))*s'
+    y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
+  parameters:
+    w: 800 #+ lorenz.y*50
+    e: 2.0
+    s: 100.0
+  output:
+    x: 
+      gain: 0.4
+    y:
+      gain: 0.4
 
-# hopf2:
-#   equation:
-#     x: ' 2*pi*y*w + (e*x-x*(x*x+y*y))*s'
-#     y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
-#   parameters:
-#     w: 100 + lorenz.y*100
-#     e: 1.0
-#     s: 100.0
-#   output:
-#     x: 
-#       gain: 0.4
-#     y:
-#       gain: 0.4
+hopf2:
+  equation:
+    x: ' 2*pi*y*w + (e*x-x*(x*x+y*y))*s'
+    y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
+  parameters:
+    w: 100 + lorenz.x*100
+    e: 1.0
+    s: 100.0
+  output:
+    x: 
+      gain: 0.4
+    y:
+      gain: 0.4

@@ -10,7 +10,7 @@ from directories import sc_extensions_path, home_path, sources_path
 from directories import ode_template_filename, sc_def_template_filename
 from time import sleep
 
-sleep_time = 1.0
+sleep_time = 0.01
 
 
 class SynthDef():
@@ -99,16 +99,16 @@ class Ode(SynthDef):
         self.set_equation(config['equation'])
         # sleep(sleep_time)
         self.create_equation_parameters()
-        sleep(sleep_time)
+        # sleep(sleep_time)
         values, connect = self.parse_parameters(config['parameters'])
         self.update_parameters_values(values)
         # sleep(sleep_time)
         self.subsitute_and_build()
         # sleep(sleep_time)
         self.load_synth()
-        sleep(sleep_time * 2)
-        self.create_synth()
         sleep(sleep_time)
+        self.create_synth()
+        # sleep(sleep_time)
         self.create_outputs(config['output'])
         # sleep(sleep_time)
         self.update_outputs(config['output'])
@@ -206,10 +206,10 @@ class Ode(SynthDef):
     def remove(self):
         for k in self.outputs:
             self.outputs[k].free()
-            sleep(sleep_time)
+            # sleep(sleep_time)
         for p in self.parameters:
             self.parameters[p].free()
-            sleep(sleep_time)
+            # sleep(sleep_time)
         self.free()
 
     def subsitute_and_build(self):
