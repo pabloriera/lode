@@ -4,13 +4,15 @@ import subprocess
 import os
 from shutil import copy2
 import shlex
-
-from utils import template_read_sub_write, parse_equation, parse_linear
+import yaml
+from utils import template_read_sub, template_read_sub_write, parse_equation, parse_linear
 from directories import sc_extensions_path, home_path, sources_path
-from directories import ode_template_filename, sc_def_template_filename
+from directories import ode_template_filename, sc_def_template_filename, function_template_filename
 from time import sleep
+from collections import OrderedDict
 
-sleep_time = 0.01
+sleep_time = 0.05
+default_initial_condition = 0.001
 
 
 class SynthDef():
@@ -42,41 +44,71 @@ class SynthDef():
             self.node = self.server.nextnodeID()
             self.server.send('/s_new', [name, self.node, action, group] + args)
 
-    def set(self, args):
+    def set(self, **kwargs):
         if self.node is not None:
+            args = [l for pair in kwargs.items() for l in pair]
             self.server.send('/n_set', [self.node] + args)
 
     def free(self):
         if self.node is not None:
             self.server.send('/n_free', [self.node])
 
+    def __del__(self):
+        self.free()
 
-class Output(SynthDef):
-    def __init__(self, bus):
+
+class Bus():
+    def __init__(self):
+        self.get_next_bus()
+
+    @classmethod
+    def get_next_bus(cls):
+        cls.bus_id = cls.bus_counter
+        cls.bus_counter += 1
+
+
+class InputBus(Bus):
+    bus_counter = 40
+
+    def __init__(self):
         super().__init__()
-        self.new('output', self.output_group, ['bus', bus], action=1)
 
 
-class Connect(SynthDef):
+class OutputBus(Bus):
+    bus_counter = 10
+
+    def __init__(self):
+        super().__init__()
+
+
+class OutputDef(SynthDef):
+    def __init__(self, bus_id):
+        super().__init__()
+        self.new('output', self.output_group, ['bus', bus_id], action=1)
+        self.bus_id = bus_id
+
+
+class ConnectDef(SynthDef):
     def __init__(self, from_, to, mul=1, add=0):
         super().__init__()
-        self.new('connect', self.connect_group, ['from', from_, 'to', to, 'mul', mul, 'add', add], action=1)
+        print('connection', ['from', from_, 'to', to, 'mul', mul, 'add', add])
+        self.new('connection', self.connect_group, ['from', from_, 'to', to, 'mul', mul, 'add', add], action=1)
 
 
-class Parameter(SynthDef):
-    def __init__(self, bus):
+class ParameterDef(SynthDef):
+    def __init__(self, bus_id):
         super().__init__()
-        self.new('param', self.param_group, ['bus', bus], action=1)
-        self.bus = bus
+        self.new('parameter', self.param_group, ['bus', bus_id], action=1)
+        self.bus_id = bus_id
 
 
 class Ode(SynthDef):
-    output_bus_counter = 10
-    input_bus_counter = 40
-
-    def __init__(self, name):
+    def __init__(self, name, ode_network):
         super().__init__()
+        self.ode_network = ode_network
+        self.discrete = False
         self.equation = None
+        self.initial_condition = None
         self.variables = []
         self.equation_parameters = []
         self.equation_inputs = []
@@ -89,30 +121,40 @@ class Ode(SynthDef):
             home=home_path, sc_extensions_path=sc_extensions_path, Ode_name=self.Name)
 
         self.sc_def_filename = '{}/{}.scd'.format(sources_path, self.Name)
-        self.outputs = {}
-        self.output_dict = {}
-        self.parameters_dict = {}
-        self.parameters = {}
-        self.first_time = True
+        self.input_bus = OrderedDict()
+        self.output_bus = OrderedDict()
+        self.outputs = OrderedDict()
+        self.output_config = OrderedDict()
+        self.parameters = OrderedDict()
+        self.parameters_config = OrderedDict()
+        self.connections = OrderedDict()
 
     def setup(self, config):
-        self.set_equation(config['equation'])
-        # sleep(sleep_time)
-        self.create_equation_parameters()
-        # sleep(sleep_time)
-        values, connect = self.parse_parameters(config['parameters'])
-        self.update_parameters_values(values)
-        # sleep(sleep_time)
+
+        function = config['functions'] if 'functions' in config else None
+        self.set_equation(config['equation'], functions=function)
+        self.set_initial_conditions(config.get('init', None))
+
+        if 'discrete' in config.keys():
+            self.discrete = config['discrete']
+            equation_parameters_ = ['hz'] + self.equation_parameters
+        else:
+            equation_parameters_ = self.equation_parameters
+
+        self.create_equation_parameters(equation_parameters_)
+
+        if 'parameters' in config:
+            self.update_parameters_values(config['parameters'])
+
+        self.create_outputs(self.variables)
+        if 'output' in config:
+            self.update_outputs(config['output'])
+
         self.subsitute_and_build()
-        # sleep(sleep_time)
         self.load_synth()
         sleep(sleep_time)
         self.create_synth()
         # sleep(sleep_time)
-        self.create_outputs(config['output'])
-        # sleep(sleep_time)
-        self.update_outputs(config['output'])
-        return connect
 
     def update(self, config):
         if 'equation' in config:
@@ -123,10 +165,8 @@ class Ode(SynthDef):
                 if self.variables == list(sorted(config['equation'].keys())):
                     print(self.Name, 'Eq same variables')
                     self.set_equation(config['equation'])
-                    values, connect = self.parse_parameters(config['parameters'])
-                    self.update_parameters_values(values)
+                    self.update_parameters_values(config['parameters'])
                     self.subsitute_and_build()
-                    return connect
                 else:
                     print(self.Name, 'Eq not same variables')
                     self.remove()
@@ -134,23 +174,21 @@ class Ode(SynthDef):
                     self.setup(config)
 
         if 'output' in config:
-            if config['output'] == self.output_dict:
+            if config['output'] == self.output_config:
                 print(self.Name, 'Output no change')
             else:
                 print(self.Name, 'Output change')
                 self.update_outputs(config['output'])
 
         if 'parameters' in config:
-            if config['parameters'] == self.parameters_dict:
+            if config['parameters'] == self.parameters_config:
                 print(self.Name, 'Param Values no change')
                 return 'no change'
             else:
                 print(self.Name, 'Param Values change')
-                values, connect = self.parse_parameters(config['parameters'])
-                self.update_parameters_values(values)
-                return connect
+                self.update_parameters_values(config['parameters'])
 
-    def set_equation(self, equation):
+    def set_equation(self, equation, functions=None):
         if isinstance(equation, dict):
             compiled_equations = {}
             for k, v in equation.items():
@@ -165,12 +203,9 @@ class Ode(SynthDef):
             if valid:
                 self.equation = equation
                 self.variables = list(sorted(self.equation.keys()))
-                if self.first_time:
-                    self.set_output_buses(len(self.variables))
 
                 parameters_ = []
-                no_parameters = [ov.upper() for ov in self.variables]
-                no_parameters.append('PI')
+                no_parameters = [ov.upper() for ov in self.variables] + ['PI', 'T']
 
                 compiled_inputs = []
                 for k, v in equation.items():
@@ -180,36 +215,31 @@ class Ode(SynthDef):
                     if i not in no_parameters:
                         parameters_.append(i.lower())
 
-                parameters_ = sorted(parameters_)
-                if self.equation_parameters == parameters_:
+                if set(self.equation_parameters) == set(parameters_):
                     print(self.Name, 'Param in eq no change')
                 else:
-                    if self.first_time:
-                        self.equation_parameters = parameters_
-                        print(self.Name, self.equation_parameters)
-                        if 't' in self.equation_parameters:
-                            self.equation_parameters.pop(self.equation_parameters.index('t'))
+                    for p in parameters_:
+                        if p not in self.equation_parameters:
+                            self.equation_parameters.append(p)
 
-                        self.n_inputs = len(self.equation_parameters) + len(self.equation_inputs)
-                        self.set_input_buses(self.n_inputs)
-                    else:
-                        print(self.Name, 'Param in eq change')
+                    print(self.Name, self.equation_parameters)
+                    print(self.Name, 'Param in eq change')
 
-    def set_output_buses(self, num):
-        self.output_buses = list(range(Ode.output_bus_counter, Ode.output_bus_counter + num))
-        Ode.output_bus_counter += num
-
-    def set_input_buses(self, num):
-        self.input_buses = list(range(Ode.input_bus_counter, Ode.input_bus_counter + num))
-        Ode.input_bus_counter += num
+                if functions is not None:
+                    self.functions = []
+                    for name, func in functions.items():
+                        self.functions.append({'ARGUMENTS': ', '.join(['double {}'.format(arg) for arg in func['args']]),
+                                               'FUNCTION': name,
+                                               'FORMULA': func['formula'] + ';'
+                                               })
+                else:
+                    self.functions = None
 
     def remove(self):
         for k in self.outputs:
             self.outputs[k].free()
-            # sleep(sleep_time)
-        for p in self.parameters:
-            self.parameters[p].free()
-            # sleep(sleep_time)
+        for k in self.parameters:
+            self.parameters[k].free()
         self.free()
 
     def subsitute_and_build(self):
@@ -231,16 +261,32 @@ class Ode(SynthDef):
 
         self.equation_str = ';\n    '.join(equation_str) + ';'
 
+        if self.functions is not None:
+            functions = []
+            for func in self.functions:
+                functions.append(template_read_sub(function_template_filename, func))
+
+            functions = '\n     '.join(functions)
+        else:
+            functions = ''
+
         # add more constants
         self.equation_str = self.equation_str.replace('pi', 'PI')
-        subs = {'N_EQ': len(self.variables), 'N_PARAMETERS': len(self.equation_parameters), 'EQUATION': self.equation_str}
+        subs = {'N_EQ': len(self.variables), 'N_PARAMETERS': len(self.equation_parameters),
+                'EQUATION': self.equation_str, 'FUNCTIONS': functions}
         template_read_sub_write(ode_template_filename, self.ode_source_filename, subs)
 
     def do_sc_def(self):
-        outputs = '\n\t'.join(['OffsetOut.ar({},osc[{}]);'.format(b, i) for i, b in enumerate(self.output_buses)])
-        inputs = 'inputs = [' + ','.join(['InFeedback.ar({})'.format(i) for i in self.input_buses]) + '];'
-        subs = {'Ode_name': self.Name, 'inputs': inputs, 'outputs': outputs}
+        if self.discrete:
+            rk4_or_discrete = 'Odemap'
+        else:
+            rk4_or_discrete = 'Oderk4'
 
+        outputs = '\n\t'.join(['OffsetOut.ar({},osc[{}]);'.format(o.bus_id, i) for i, (var, o) in enumerate(self.outputs.items())])
+        inputs = 'inputs = [' + ','.join(['InFeedback.ar({})'.format(p.bus_id) for param, p in self.parameters.items()]) + '];'
+        initial_conditions = ','.join([str(self.initial_conditions[var]) for var in self.variables])
+        subs = {'rk4_or_discrete': rk4_or_discrete, 'Ode_name': self.Name, 'inputs': inputs, 'outputs': outputs,
+                'initial_conditions': initial_conditions}
         template_read_sub_write(sc_def_template_filename, self.sc_def_filename, subs)
 
     def build(self):
@@ -259,46 +305,180 @@ class Ode(SynthDef):
     def create_synth(self):
         self.new(self.Name, self.gen_group)
 
-    def create_outputs(self, output):
-        if isinstance(output, dict):
-            for k, v in output.items():
-                if k in self.variables:
-                    bus = self.output_buses[self.variables.index(k)]
-                    self.outputs[k] = Output(bus)
+    def set_initial_conditions(self, config):
+        if config is not None:
+            self.initial_conditions = config
+        else:
+            self.initial_conditions = {k: default_initial_condition for k in self.variables}
 
-    def update_outputs(self, output):
-        if isinstance(output, dict):
-            self.output_dict = output
-            for k, v in self.output_dict.items():
-                if k in self.variables:
-                    if k not in self.outputs:
-                        self.create_outputs({k: v})
+    def create_output(self, output_var):
+        self.output_bus[output_var] = OutputBus()
+        return OutputDef(self.output_bus[output_var].bus_id)
+
+    def create_outputs(self, variables):
+        for output_var in variables:
+            self.outputs[output_var] = self.create_output(output_var)
+
+    def update_outputs(self, output_config):
+        if isinstance(output_config, dict):
+            self.output_config = output_config
+            for k, v in self.output_config.items():
+                if k in self.outputs.keys():
                     if 'gain' in v:
-                        self.outputs[k].set(['amp', v['gain']])
+                        self.outputs[k].set(amp=v['gain'])
                     if 'pan' in v:
-                        self.outputs[k].set(['pan', v['pan']])
+                        self.outputs[k].set(pan=v['pan'])
 
-    def create_equation_parameters(self):
-        for param, ibus in zip(self.equation_parameters, self.input_buses):
-            self.parameters[param] = Parameter(ibus)
+    def create_equation_parameter(self, param):
+        self.input_bus[param] = InputBus()
+        return ParameterDef(self.input_bus[param].bus_id)
 
-    def update_parameters_values(self, parameters_values):
-        if isinstance(parameters_values, dict):
-            self.parameters_dict = parameters_values
+    def create_equation_parameters(self, equation_parameters):
+        for param in equation_parameters:
+            self.parameters[param] = self.create_equation_parameter(param)
+
+    def update_parameters_values(self, config):
+        if config is not None:
+            parameters_values = self.parse_parameters(config)
+            self.parameters_config = parameters_values
             for param, value in self.parameters.items():
                 if param in parameters_values:
-                    if isinstance(parameters_values[param], str):
-                        value.set(['val', 0])
-                    else:
-                        value.set(['val', parameters_values[param]])
+                    value.set(val=parameters_values[param])
 
     def parse_parameters(self, parameters):
         values = {}
-        connect = {}
         for param, value in parameters.items():
             if isinstance(value, str):
-                connect[param] = parse_linear(value) + (self.parameters[param].bus,)
+                if param in self.connections:
+                    self.connections[param].remove_all()
+                add, terms = parse_linear(value)
+                self.connections[param] = Connections()
+                for t in terms:
+                    if t['ode'] in self.ode_network.keys():
+                        if t['var'] in self.ode_network[t['ode']].variables:
+                            self.connections[param].add_connection(self.ode_network[t['ode']], t['var'], self, param, t['mul'])
+                if add != 0:
+                    values[param] = add
             else:
                 values[param] = value
+        return values
 
-        return values, connect
+
+class Connection():
+    def __init__(self, from_ode, from_var, to_ode, to_parameter, mul=1, add=0):
+        self.from_ode = from_ode
+        self.from_var = from_var
+        self.to_ode = to_ode
+        self.to_parameter = to_parameter
+
+        self.from_bus = from_ode.outputs[from_var].bus_id
+        self.to_bus = to_ode.parameters[to_parameter].bus_id
+
+        self.mul = mul
+        self.add = add
+
+    def connect(self):
+        self.connect_def = ConnectDef(self.from_bus, self.to_bus, self.mul, self.add)
+
+    def update(self, **kwargs):
+        self.connect_def.set(**kwargs)
+
+    def __del__(self):
+        self.disconnect()
+
+    def disconnect(self):
+        self.connect_def.free()
+
+
+class Connections(OrderedDict):
+    def __init__(self):
+        pass
+
+    def add_connection(self, from_ode, from_var, to_ode, to_parameter, mul=1, add=0):
+        con = Connection(from_ode, from_var, to_ode, to_parameter, mul, add)
+        con.connect()
+        self[(from_ode, from_var, to_ode, to_parameter)] = con
+
+    def remove_connection(self, from_ode, from_var, to_ode, to_parameter):
+        del self[(from_ode, from_var, to_ode, to_parameter)]
+
+    def remove_all(self):
+        self.clear()
+
+    def __del__(self):
+        self.remove_all()
+
+
+class OdeNetwork(OrderedDict):
+
+    def __init__(self):
+        pass
+
+    def add_ode(self, name, config):
+        ode = Ode(name, self)
+        ode.setup(config)
+        self[name] = ode
+
+    def remove_ode(self, name):
+        self[name].remove()
+        del self[name]
+
+    # def add_connection(self, from_ode, from_var, to_ode, to_parameter, mul, add):
+    #     self.connections.add_connection(from_ode, from_var, to_ode, to_parameter, mul, add)
+
+    # def remove_connection(self, from_ode, from_var, to_ode, to_parameter, mul, add):
+    #     self.connections.remove_connection(from_ode, from_var, to_ode, to_parameter)
+
+    def read_yaml(self, filename):
+        try:
+            with open(filename, 'r') as fp:
+                ode_config = yaml.load(fp)
+        except Exception:
+            pass
+
+        if ode_config is not None:
+            for ode_name, v in ode_config.items():
+                if ode_name not in self.keys():
+                    if 'equation' in ode_config[ode_name]:
+                        self.add_ode(ode_name, ode_config[ode_name])
+                else:
+                    self[ode_name].update(ode_config[ode_name])
+
+            if len(self.keys()) > len(ode_config.keys()):
+                for ode_name in set(self.keys()) - set(ode_config.keys()):
+                    self.remove_ode(ode_name)
+            # else:
+            #     for ode_name in list(self.keys()):
+            #         self.remove_ode(ode_name)
+
+    # def update_connections(self):
+
+    #     for ode_name, ode in self.items():
+
+    #         for param, conn in ode.connections.items():
+
+            # if res != 'no change':
+            #     if isinstance(res, dict):
+            #         keep = []
+            #         if res:
+            #             for param, value in res.items():
+            #                 ode_name, ode_var = value[0].split('.')
+            #                 if ode_name in odes:
+            #                     if ode_var in odes[ode_name].variables:
+            #                         from_ = odes[ode_name].output_buses[odes[ode_name].variables.index(ode_var)]
+            #                         to = value[3]
+            #                         mul = value[1]
+            #                         add = value[2]
+            #                         keep.append((from_, to))
+            #                         if not (from_, to) in connects:
+            #                             connects[(from_, to)] = Connect(from_, to, mul, add)
+            #                             print('Connect', from_, to, mul, add)
+            #                         else:
+            #                             connects[(from_, to)].set(['mul', mul, 'add', add])
+            #                             print('Update Connect', from_, to, mul, add)
+
+            #         for ft, c in list(connects.items()):
+            #             if ft not in keep:
+            #                 print('Free', ft)
+            #                 c.free()
+            #                 connects.pop(ft)

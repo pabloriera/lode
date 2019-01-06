@@ -37,13 +37,16 @@ def write_to_file(fn, text):
 
 
 def template_read_sub_write(filename_in, filename_out, dict_subs):
+    pathlib.Path(filename_out).parent.mkdir(parents=True, exist_ok=True)
+    with open(filename_out, 'w') as fp:
+        fp.write(template_read_sub(filename_in, dict_subs))
+
+
+def template_read_sub(filename_in, dict_subs):
     with open(filename_in) as fp:
         template = Template(fp.read())
 
-    pathlib.Path(filename_out).parent.mkdir(parents=True, exist_ok=True)
-
-    with open(filename_out, 'w') as fp:
-        fp.write(template.safe_substitute(dict_subs))
+    return template.safe_substitute(dict_subs)
 
 
 def parse_equation(eq):
@@ -70,8 +73,10 @@ def parse_linear(eq):
             imul = None
 
         for i, p in enumerate(parts):
-            if p != '+' and p != '*' and not p.isdigit():
-                connect = p.lower()
+            if p != '+' and p != '*' and not p.isdigit() and '.' in p:
+                ode_and_var = p.lower()
+                ode = ode_and_var.split('.')[0]
+                var = ode_and_var.split('.')[1]
             elif p.isdigit():
                 if imul is not None:
                     if abs(i - imul) == 1:
@@ -84,7 +89,7 @@ def parse_linear(eq):
                     if float(p) != mul:
                         add = float(p)
 
-        return connect, mul, add
+        return add, [{'ode': ode, 'var': var, 'mul': mul}]
 
     except Exception:
         print('Syntax formula error')

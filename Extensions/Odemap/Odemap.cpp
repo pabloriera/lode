@@ -14,7 +14,7 @@
       SETCALC(ClearUnitOutputs);                                    \
       ClearUnitOutputs(unit, 1);                                    \
       if (unit->mWorld->mVerbosity > -2) {                          \
-          Print("Failed to allocate memory for Oderk4 ugen.");    \
+          Print("Failed to allocate memory for Odemap ugen.");    \
       }                                                             \
       return;                                                       \
     }
@@ -25,78 +25,35 @@ typedef  void (*equation_def)(double X[], double t, double dX[], double param[])
 static InterfaceTable *ft;
 
 // declare struct to hold unit generator state
-struct Oderk4 : public Unit
+struct Odemap : public Unit
 {
     char *m_string;
     int m_string_size;
     int N_EQ, N_PARAMETERS;
-    int c=0;
     bool ok = false;
     equation_def equation;
     void* handle;
-    double dt;
-    double t;
+    float counter;
+    double n;
     double *X;
+    double *X_init;
     double *param;
-    double *F1, *F2, *F3, *F4, *xtemp;    
+    double *Xtemp;
+    double *dx;
+    double freq;
 };
 
-void rk4(Oderk4* unit)
+void apply_map(Odemap* unit)
 {
+  
 
-    // Runge-Kutta integrator (4th order)
-    // Inputs
-    //   X          Current value of dependent variable
-    //   n_eq         Number of elements in dependent variable X
-    //   t          Independent variable (usually time)
-    //   dt        Step size (usually time step)
-    //   derivsRK   Right hand side of the Oderk4; derivsRK is the
-    //              name of the function which returns dX/dt
-    //              Calling format derivsRK(X,t,param,dXdt).
-    //   param      Extra parameters passed to derivsRK
-    // Output
-    //   X          New value of X after a step of size dt
-    int n_eq = unit->N_EQ;
-    int i;
-    double dt = unit->dt;
-    double t = unit->t;
-    double half_dt = 0.5*dt;
-    double t_half = t + half_dt;
-    double t_full = t + dt;
-    double *F1, *F2, *F3, *F4, *Xtemp, *X, *param;
-    F1 = unit->F1;
-    F2 = unit->F2;
-    F3 = unit->F3;
-    F4 = unit->F4;
-    Xtemp = unit->xtemp;
-    X = unit->X;
-    param = unit->param;
-    
-    // Evaluate F1 = f(X,t).
-    unit->equation( X, t, F1, param);
-    for( i=0; i<n_eq; i++ )
-        Xtemp[i] = X[i] + half_dt*F1[i];
-    // Evaluate F2 = f( X+dt*F1/2, t+dt/2 ).      
-    unit->equation( Xtemp, t_half, F2, param);   
-    for( i=0; i<n_eq; i++ )
-        Xtemp[i] = X[i] + half_dt*F2[i];
-    // Evaluate F3 = f( X+dt*F2/2, t+dt/2 ).
-    unit->equation( Xtemp, t_half, F3, param );
-    for( i=0; i<n_eq; i++ )
-        Xtemp[i] = X[i] + dt*F3[i];
-    // Evaluate F4 = f( X+dt*F3, t+dt ).
-    unit->equation( Xtemp, t_full, F4, param);
-    // Return X(t+dt) computed from fourth-order R-K.
-    for( i=0; i<n_eq; i++ )
-      X[i] += dt/6.*(F1[i] + F4[i] + 2.*(F2[i]+F3[i]));
-    unit->t = t_full;
 }
 
 // declare unit generator functions
-static void Oderk4_next_a(Oderk4 *unit, int inNumSamples);
-// static void Oderk4_next_k(Oderk4 *unit, int inNumSamples);
-static void Oderk4_Ctor(Oderk4* unit);
-static void Oderk4_Dtor(Oderk4* unit);
+static void Odemap_next_a(Odemap *unit, int inNumSamples);
+// static void Odemap_next_k(Odemap *unit, int inNumSamples);
+static void Odemap_Ctor(Odemap* unit);
+static void Odemap_Dtor(Odemap* unit);
 
 //////////////////////////////////////////////////////////////////
 
@@ -107,17 +64,16 @@ static void Oderk4_Dtor(Oderk4* unit);
 // 1. set the calculation function.
 // 2. initialize the unit generator state variables.
 // 3. calculate one sample of output.
-void Oderk4_Ctor(Oderk4* unit)
+void Odemap_Ctor(Odemap* unit)
 {
-    printf("Oderk4 v0.2");
+    printf("Odemap v0.2");
     // printf("SAMPLEDUR %g",SAMPLEDUR);
     // printf("mBufLength %d",unit->mBufLength );
     // printf("calc_FullRate %d",calc_FullRate);
 
     // set the calculation function.
-    SETCALC(Oderk4_next_a);
+    SETCALC(Odemap_next_a);
 
-    unit->c = 0;
     unit->m_string_size = IN0(0); // number of chars in the id string
     unit->m_string = (char*) RTAlloc(unit->mWorld, (unit->m_string_size + 1) * sizeof(char));
     for(int i = 0; i < unit->m_string_size; i++){
@@ -128,13 +84,13 @@ void Oderk4_Ctor(Oderk4* unit)
     // Print("Ode name %s",unit->m_string);
     // Print("Ode name %s",ode_name.c_str());
     std::string libname("odes/lib"+ode_name+".so");
-    std::cout << "Ode name: " << ode_name << std::endl;
-    std::cout << "Lib name: " << libname  << std::endl;
+    Print("Ode name: %s", ode_name.c_str());
+    Print("Lib name: %s", libname.c_str());
     unit->handle = dlopen(libname.c_str(), RTLD_LAZY);
 
     if(unit->handle!=NULL)
     {
-      Print("%s: DLOPEN: ok", unit->m_string);
+      Print("%s: DLOPEN: ok\n", unit->m_string);
       void (*dimensions)(int*);
       dimensions = ( void (*)(int*) ) dlsym(unit->handle, "dimensions");
       int dims[2];
@@ -144,33 +100,37 @@ void Oderk4_Ctor(Oderk4* unit)
       unit->N_EQ = dims[0];
       unit->N_PARAMETERS = dims[1];
 
-      Print("%s: N_PARAMETERS %d", unit->m_string,unit->N_PARAMETERS);
-      Print("%s: N_EQ %d", unit->m_string,unit->N_EQ);
+      Print("%s: N_PARAMETERS %d\n", unit->m_string,unit->N_PARAMETERS);
+      Print("%s: N_EQ %d\n", unit->m_string,unit->N_EQ);
 
-      RTALLOC_AND_CHECK(unit->F1, unit->N_EQ * sizeof(double));
-      RTALLOC_AND_CHECK(unit->F2, unit->N_EQ * sizeof(double));
-      RTALLOC_AND_CHECK(unit->F3, unit->N_EQ * sizeof(double));
-      RTALLOC_AND_CHECK(unit->F4, unit->N_EQ * sizeof(double));
-      RTALLOC_AND_CHECK(unit->xtemp, unit->N_EQ * sizeof(double));
+      RTALLOC_AND_CHECK(unit->Xtemp, unit->N_EQ * sizeof(double));
       RTALLOC_AND_CHECK(unit->X, unit->N_EQ * sizeof(double));
+      RTALLOC_AND_CHECK(unit->dx, unit->N_EQ * sizeof(double));
+      RTALLOC_AND_CHECK(unit->X_init, unit->N_EQ * sizeof(double));
       RTALLOC_AND_CHECK(unit->param, unit->N_PARAMETERS * sizeof(double));
 
-      unit->dt = SAMPLEDUR;
-      unit->t = 0;
+      unit->n = 0;
 
       for(int k=0;k<unit->N_EQ;k++)
-          unit->X[k] = 0.001;
+      {
+          unit->X_init[k] = IN0(unit->m_string_size+1+k);
+          unit->X[k] = unit->X_init[k];
+      }
+        
+      unit->freq = IN0(unit->m_string_size+1+unit->N_EQ);
+      Print("%s: FREC %g\n", unit->m_string, unit->freq);
+
 
       for(int k=0;k<unit->N_PARAMETERS;k++)
       {
-          unit->param[k] = IN0(unit->m_string_size+1+k);
-          Print("%s: PARAM %g", unit->m_string, unit->param[k]);
+          unit->param[k] = IN0(unit->m_string_size+1+k+unit->N_EQ+1);
+          Print("%s: PARAM %g\n", unit->m_string, unit->param[k]);
       }
 
       for(int k=0;k<unit->N_EQ;k++)
       {
           OUT0(k) = unit->X[k];
-          Print("%s: OUT %g", unit->m_string, unit->X[k]);
+          Print("%s: OUT %g\n", unit->m_string, unit->X[k]);
       }
       unit->ok = true;
     }
@@ -179,21 +139,17 @@ void Oderk4_Ctor(Oderk4* unit)
       unit->ok = false; 
       SETCALC(ClearUnitOutputs);
       ClearUnitOutputs(unit, 1);
-      Print("%s: DLOPEN: not ok", unit->m_string);
+      Print("%s: DLOPEN: not ok\n", unit->m_string);
     }
 }
 
-void Oderk4_Dtor(Oderk4* unit)
+void Odemap_Dtor(Odemap* unit)
 {
   if(unit->ok)
   {
     RTFree(unit->mWorld, unit->X );
     RTFree(unit->mWorld, unit->param );
-    RTFree(unit->mWorld, unit->F1 );
-    RTFree(unit->mWorld, unit->F2 );
-    RTFree(unit->mWorld, unit->F3 );
-    RTFree(unit->mWorld, unit->F4 );
-    RTFree(unit->mWorld, unit->xtemp );
+    RTFree(unit->mWorld, unit->Xtemp );
     Print("%s: All Free", unit->m_string);
     dlclose(unit->handle);
     Print("%s: Closed", unit->m_string);
@@ -207,26 +163,82 @@ void Oderk4_Dtor(Oderk4* unit)
 // which is typically 64 samples.
 
 // calculation function for an audio rate frequency argument
-void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
+void Odemap_next_a(Odemap *unit, int inNumSamples)
 {
-    for (int i=0; i < inNumSamples; ++i)
-    {
-        for(int k=0;k<unit->N_PARAMETERS;k++)
-        {
-          unit->param[k] = zapgremlins(IN(unit->m_string_size+1+k)[i]);          
-        }
-        rk4( unit );
-        for(int k=0;k<unit->N_EQ;k++)
-        {
-          OUT(k)[i] = zapgremlins(unit->X[k]);
-        }
+
+
+  int n_eq = unit->N_EQ;
+  float counter = unit->counter;
+  
+  unit->freq = IN0(unit->m_string_size+1+unit->N_EQ);
+  // Print("%s: FREC %g\n", unit->m_string, unit->freq);
+
+  float samplesPerCycle;
+  // double slope;
+  if(unit->freq < unit->mRate->mSampleRate){
+    samplesPerCycle = unit->mRate->mSampleRate / sc_max(unit->freq, 0.001f);
+    // slope = 1.f / samplesPerCycle;
+  }
+  else {
+    samplesPerCycle = 1.f;
+    // slope = 1.f;
+  }
+
+  for(int k=0;k<unit->N_EQ;k++)
+  {
+    double X_init_k = IN0(unit->m_string_size+1+k);
+    if(unit->X_init[k]!=X_init_k){
+      unit->X_init[k] = X_init_k;
+      unit->X[k] = X_init_k;
     }
+
+  }
+
+  for (int i=0; i < inNumSamples; ++i)
+  {
+    if(counter >= samplesPerCycle){
+      counter -= samplesPerCycle;
+
+      for(int k=0;k<unit->N_PARAMETERS;k++)
+      {
+        unit->param[k] = zapgremlins(IN(unit->m_string_size+1+k+unit->N_EQ+1)[i]);
+      }
+
+      unit->equation( unit->X, unit->n, unit->Xtemp, unit->param);
+      unit->n++;
+
+      for(int k=0;k<unit->N_EQ;k++)
+      {
+        unit->X[k] = unit->Xtemp[k];
+      }
+
+
+      // Linear Interp
+      // for(int k=0;k<unit->N_EQ;k++)
+      // {
+      //   unit->dx[k] = unit->Xtemp[k] - unit->X[k];
+      // }
+
+    }
+    counter++;
+    
+
+    // Linear Interp
+    // unit->X[k]+unit->dx[k]*frac
+
+    for(int k=0;k<unit->N_EQ;k++)
+    {
+      OUT(k)[i] = zapgremlins(unit->X[k]);
+    }
+
+      unit->counter = counter;
+  }
 
 }
 
 //////////////////////////////////////////////////////////////////
 
-// void Oderk4_next_k(Oderk4 *unit, int inNumSamples)
+// void Odemap_next_k(Odemap *unit, int inNumSamples)
 // {
 
 //     for (int i=0; i < inNumSamples; ++i)
@@ -248,11 +260,11 @@ void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
 // }
 
 // the entry point is called by the host when the plug-in is loaded
-PluginLoad(Oderk4)
+PluginLoad(Odemap)
 {
     // InterfaceTable *inTable implicitly given as argument to the load function
     ft = inTable; // store pointer to InterfaceTable
 
-    DefineDtorUnit(Oderk4);
+    DefineDtorUnit(Odemap);
 }
 

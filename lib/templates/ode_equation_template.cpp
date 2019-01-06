@@ -7,6 +7,9 @@
 
 extern "C"
 {
+
+    $FUNCTIONS
+
     void dimensions(int x[])
     {
         x[0] = N_EQ;

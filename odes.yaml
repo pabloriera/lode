@@ -31,20 +31,24 @@
 #     y:
 #       gain: 0.4
 
-lorenz: &lorenz
-  equation:
-    x: 'sigma*(y-x)*tau' 
-    y: '(x*(rho-z)-y)*tau'
-    z: '(x*y-beta*z)*tau'
-  parameters:
-    sigma: 11
-    rho: 28
-    beta: 2.6666
-    tau: 5.0
-  output:
-    y: 
-      gain: 0.4
-      pan: 0
+# lorenz: &lorenz
+#   equation:
+#     x: 'sigma*(y-x)*tau' 
+#     y: '(x*(rho-z)-y)*tau'
+#     z: '(x*y-beta*z)*tau'
+#   parameters:
+#     sigma: 11
+#     rho: 26
+#     beta: 2.6666
+#     tau: 200.0
+#   init:
+#     x: 1.0
+#     y: 1.0
+#     z: 1.0
+#   output:
+#     y: 
+#       gain: 0.6
+#       pan: 0
 
 # lorenz2: 
 #   <<: *lorenz
@@ -55,7 +59,7 @@ lorenz: &lorenz
 #     tau: 100.0
 #   output:
 #     y: 
-#       gain: 0.3
+#       gain: 0.4
 #       pan: 0
 
 
@@ -75,31 +79,91 @@ lorenz: &lorenz
 #     y:
 #       gain: 0.5
 
+# hr:
+#   functions:
+#     phi: 
+#       args: [x,a,b]
+#       formula: -a*x*x*x + b*x*x
+#     psi: 
+#       args: [x,c,d]
+#       formula: c - d*x*x
+#   equation:
+#     x: (y + phi(x,a,b) - z + i)*tau
+#     y: (psi(x,c,d) - y)*tau
+#     z: (r*(s*(x-x_r)-z))*tau
+#   parameters:
+#     a: 1
+#     b: 3 + lroenz.y*0
+#     c: 1
+#     d: 5
+#     r: 0.005
+#     s: 5
+#     xr: -1.6
+#     i: -2
+#     tau: 1000
+#   output:
+#     x: {gain: 0.3, pan: -1}
+#     y: {gain: 0.3, pan: 1}
+
+logistic:
+  discrete: true
+  equation:
+    x: r*x*(1-x)
+  init:
+    x: 0.1
+  parameters:
+    r: 3.9
+    hz: 500
 
 hopf:
   equation:
-    x: ' 2*pi*y*w + (e*x-x*(x*x+y*y))*s'
+    x: ' 2*pi*y*w + (e*x-x*(x*x+y*y)+i)*s'
     y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
   parameters:
-    w: 800 #+ lorenz.y*50
-    e: 2.0
+    w: 100 + logistic.x*100
+    e: -10 + logistic.x*10
     s: 100.0
+    i: 0.0
   output:
-    x: 
-      gain: 0.4
-    y:
-      gain: 0.4
+    x: {gain: 1.0, pan: -1}
+    y: {gain: 1.0, pan: 1}
 
-hopf2:
-  equation:
-    x: ' 2*pi*y*w + (e*x-x*(x*x+y*y))*s'
-    y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
-  parameters:
-    w: 100 + lorenz.x*100
-    e: 1.0
-    s: 100.0
-  output:
-    x: 
-      gain: 0.4
-    y:
-      gain: 0.4
+
+# henon:
+#   map:
+#     x: '1-a*x*x+y'
+#     y: 'b*x'
+#   init:
+#     x: 0
+#     y: 1
+#   parameters:
+#     a: 1.4
+#     b: 0.3
+
+
+
+# hopf2:
+#   equation:
+#     x: ' 2*pi*y*w + (e*x-x*(x*x+y*y))*s'
+#     y: '-2*pi*x*w + (e*y-y*(x*x+y*y))*s'
+#   parameters:
+#     w: 310 #+ lorenz.x*100
+#     e: 10.0
+#     s: 100.0
+#   output:
+#     x: 
+#       gain: 0.2
+#     y:
+#       gain: 0.2
+
+# map:
+#   discrete: true
+#   equation:
+#     x: y
+#     y: -x
+#   init:
+#     x: 1
+#     y: -1
+#   parameters:
+#     hz: 4
+

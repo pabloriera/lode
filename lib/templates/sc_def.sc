@@ -4,6 +4,6 @@ SynthDef.new(\${Ode_name},
     var inputs;
     "SynthDef:${Ode_name}".postln;
     $inputs
-    osc = Oderk4.ar("${Ode_name}", *inputs )*amp;
+    osc = ${rk4_or_discrete}.ar("${Ode_name}", $initial_conditions, *inputs )*amp;
     $outputs
 }).add;
