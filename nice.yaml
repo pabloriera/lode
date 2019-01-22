@@ -121,7 +121,7 @@ hr:
     style: 2
     xZoom: 0.2
     yZoom: 0.01
-    channels: 2
+
 
 logistic:
   discrete: true

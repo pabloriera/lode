@@ -1,5 +1,5 @@
 SynthDef.new(\${Ode_name}, 
-	{|amp=1 |
+	{|amp=1, $initial_conditions_args |
     var osc;
     var inputs;
     "SynthDef:${Ode_name}".postln;

@@ -1,6 +1,7 @@
 from ServerManager import DefaultServer
 from IPython import embed
-from lib.Ode import OdeNetwork, SynthDef
+from SynthDefs import SynthDef
+from OdeNetwork import OdeNetwork
 import argparse
 import pyinotify
 import pathlib

@@ -1,7 +1,8 @@
-import formulas
+from sympy.parsing.sympy_parser import parse_expr
 from string import Template
 import pathlib
 import sys
+import re
 from IPython import embed
 
 if sys.version_info[0] > 2:
@@ -50,47 +51,50 @@ def template_read_sub(filename_in, dict_subs):
 
 
 def parse_equation(eq):
-    eq.replace('**', '^')
-    eq = '=' + eq
     try:
-        compiled = formulas.Parser().ast(eq)[1].compile()
-        return compiled
-    except Exception:
+        expr = parse_expr(eq)
+        return expr
+    except Exception as e:
         print('Syntax formula error')
+        print(e)
+        # embed()
         return None
 
 
-def parse_linear(eq):
-    eq = '=' + eq
+def parse_parameter_formula(formula_string):
     try:
-        parts = [p.name for p in formulas.Parser().ast(eq)[0]]
-        mul = 1.0
-        add = 0
+        formula_string = re.sub(r'\.([a-zA-Z]+)', r'_var_\1', formula_string)
+        # embed()
+        formula_string = re.sub(r'\[-(\d+)\.?(\d+)?\]', r'_del_\1_\2', formula_string)
+        expr = parse_expr(formula_string)
+        add, expr = expr.as_coeff_Add()
+        terms, syms = expr.as_terms()
+        external_inputs = {}
+        for t in terms:
+            if t[0] != 0:
+                term_sym = syms[t[1][1].index(1)]
+                term_var = str(term_sym)
+                node = term_var.split('_')[0]
+                if 'var' in term_var:
+                    var = re.findall(r'var_([a-zA-Z]+)', term_var)[0]
+                else:
+                    var = None
+                if 'del' in term_var:
+                    delay_time = float('.'.join(re.findall(r'del_(\d+)_?(\d+)?', term_var)[0]))
+                else:
+                    delay_time = 0
 
-        if '*' in parts:
-            imul = parts.index('*')
-        else:
-            imul = None
+                if var is not None:
+                    external_inputs[node] = {'mul': t[1][0][0], 'var': var, 'delay_time': delay_time}
+                else:
+                    external_inputs[str(term_sym.func)] = {'mul': t[1][0][0]}
+                    if len(term_sym.args) > 0:
+                        external_inputs[str(term_sym.func)].update({'args': term_sym.args, })
 
-        for i, p in enumerate(parts):
-            if p != '+' and p != '*' and not p.isdigit() and '.' in p:
-                ode_and_var = p.lower()
-                ode = ode_and_var.split('.')[0]
-                var = ode_and_var.split('.')[1]
-            elif p.isdigit():
-                if imul is not None:
-                    if abs(i - imul) == 1:
-                        mul = float(p)
-                        break
+        return float(add), external_inputs
 
-        if '+' in parts:
-            for i, p in enumerate(parts):
-                if p.isdigit():
-                    if float(p) != mul:
-                        add = float(p)
-
-        return add, [{'ode': ode, 'var': var, 'mul': mul}]
-
-    except Exception:
+    except Exception as e:
         print('Syntax formula error')
+        print(e)
+        embed()
         return None

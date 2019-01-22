@@ -36,3 +36,7 @@ class OdeNetwork(OrderedDict):
             if len(self.keys()) > len(ode_config.keys()):
                 for ode_name in set(self.keys()) - set(ode_config.keys()):
                     self.remove_ode(ode_name)
+
+    def __del__(self):
+        for ode_name in self:
+            self.remove_ode(ode_name)

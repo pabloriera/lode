@@ -626,10 +626,10 @@ class SCLangServerManager(ServerManager):
         self.sclang.send(msg)
         return
 
-    def loadSynthDef(self, fn, cmd='/lode'):
+    def loadSynthDef(self, fn, address='/lode'):
         """ Sends a message to the FoxDot class in SuperCollider to load a SynthDef from file """
         msg = OSCMessage()
-        msg.setAddress(cmd)
+        msg.setAddress(address)
         msg.append(fn)
         self.sclang.send(msg)
         return

@@ -37,6 +37,7 @@ struct Oderk4 : public Unit
     double dt;
     double t;
     double *X;
+    double *X_init;
     double *param;
     double *F1, *F2, *F3, *F4, *xtemp;    
 };
@@ -153,6 +154,7 @@ void Oderk4_Ctor(Oderk4* unit)
       RTALLOC_AND_CHECK(unit->F4, unit->N_EQ * sizeof(double));
       RTALLOC_AND_CHECK(unit->xtemp, unit->N_EQ * sizeof(double));
       RTALLOC_AND_CHECK(unit->X, unit->N_EQ * sizeof(double));
+      RTALLOC_AND_CHECK(unit->X_init, unit->N_EQ * sizeof(double));
       RTALLOC_AND_CHECK(unit->param, unit->N_PARAMETERS * sizeof(double));
 
       unit->dt = SAMPLEDUR;
@@ -188,6 +190,7 @@ void Oderk4_Dtor(Oderk4* unit)
   if(unit->ok)
   {
     RTFree(unit->mWorld, unit->X );
+    RTFree(unit->mWorld, unit->X_init );
     RTFree(unit->mWorld, unit->param );
     RTFree(unit->mWorld, unit->F1 );
     RTFree(unit->mWorld, unit->F2 );
@@ -209,6 +212,17 @@ void Oderk4_Dtor(Oderk4* unit)
 // calculation function for an audio rate frequency argument
 void Oderk4_next_a(Oderk4 *unit, int inNumSamples)
 {
+
+    for(int k=0;k<unit->N_EQ;k++)
+    {
+      if(unit->X_init[k]!=IN0(unit->m_string_size+1+k))
+      {
+        unit->X_init[k]=IN0(unit->m_string_size+1+k);
+        unit->X[k] = unit->X_init[k];
+        Print("%s: INIT %g\n", unit->m_string, unit->X_init[k]);
+      }
+    }
+
     for (int i=0; i < inNumSamples; ++i)
     {
         for(int k=0;k<unit->N_PARAMETERS;k++)
