@@ -36,6 +36,7 @@ vdp:
     style: 2
     xZoom: 0.1
     yZoom: 0.1
+    bufnum: 1
 
 lorenz: &lorenz
   equation:
@@ -60,7 +61,7 @@ lorenz: &lorenz
     style: 2
     xZoom: 0.03
     yZoom: 0.03
-
+    bufnum: 0
 
 
 # lorenz2: 

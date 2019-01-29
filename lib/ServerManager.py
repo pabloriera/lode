@@ -589,7 +589,7 @@ class SCLangServerManager(ServerManager):
         msg = OSCMessage(address)
 
         msg.append(message)
-
+        # print('MSG', msg, message)
         self.client.send(msg)
 
         # If we are sending other messages as well

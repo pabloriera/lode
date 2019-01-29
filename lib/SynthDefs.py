@@ -95,11 +95,10 @@ class SCInputDef(SynthDef):
 class ScopeDef(SynthDef):
     scope_ix = 0
 
-    def __init__(self, bus_id, channels):
+    def __init__(self, channels):
         super().__init__()
-        self.bus_id = bus_id
         self.bufnum = ScopeDef.scope_ix
-        self.new('scope', self.output_group, ['bus', bus_id, 'bufnum', self.bufnum, 'channels', channels], action=1)
+        self.new('scope', self.output_group, ['bufnum', self.bufnum, 'bux', channels[0], 'busy', channels[1]], action=1)
         ScopeDef.scope_ix += 1
         ScopeDef.scope_ix = ScopeDef.scope_ix % scope_n
         print('scope_ix', ScopeDef.scope_ix)
@@ -108,9 +107,6 @@ class ScopeDef(SynthDef):
 class Bus():
     def __init__(self):
         self.get_next_bus(self)
-        # if DEBUG:
-        # print('New class', self, 'bus id:',
-        # self.bus_id, 'bus_counter:', self.bus_counter)
 
     @classmethod
     def get_next_bus(cls, instance):
@@ -513,10 +509,10 @@ class Ode(SynthDef):
     def create_scope(self):
         if self.scope is not None:
             self.scope.free()
-
-        bus_id = list(self.output_bus.values())[0].bus_id
-        channels = len(self.output_bus)
-        self.scope = ScopeDef(bus_id, channels)
+        channels = [x.bus_id for x in self.output_bus.values()]
+        if len(channels) < 2:
+            channels = [channels[0], channels[0]]
+        self.scope = ScopeDef(channels[:2])
 
     def update_scope(self, config):
         if self.config.get('scope', None) == config:
@@ -525,11 +521,25 @@ class Ode(SynthDef):
             print(self.Name, 'Scope change')
             self.config['scope'] = config
             if 'channels' in config:
-                self.scope.set(channels=config.pop('channels'))
-            if 'offset' in config:
-                self.scope.set(offset=config.pop('offset'))
+                bus_id = min([x.bus_id for x in self.output_bus.values()])
+                channels = [bus_id + c for c in config.pop('channels')]
+                if len(channels) < 2:
+                    channels = [channels[0], channels[0]]
+                self.scope.set(busx=channels[0], busy=channels[1])
+
+            if 'frames' in config:
+                self.scope.set(scopeFrames=config.pop('frames'))
+
+            if 'pos' in config:
+                pos = config.pop('pos')
+                scope_ix = pos
+                config['bufnum'] = self.scope.bufnum
+            else:
+                scope_ix = self.scope.bufnum
+                config['bufnum'] = self.scope.bufnum
+
             for k, v in config.items():
-                command = 'AppClock.sched(0.1,{{c[{scope_ix}].{key}={value}; nil;}});'.format(scope_ix=self.scope.bufnum, key=k, value=v)
+                command = 'AppClock.sched(0.1,{{c[{scope_ix}].{key}={value}; nil;}});'.format(scope_ix=scope_ix, key=k, value=v)
                 self.server.loadSynthDef(command, address='/lode/interpret')
 
     def create_output(self, output_var):

@@ -8,13 +8,17 @@ s.waitForBoot{
 	var scope_widht = 240;
 	var scope_height = 240;
 
-	f = Array.fill(scope_n,{arg i; Buffer.alloc(s,2048,2)});
+	f = Array.fill(scope_n,{arg i; Buffer.alloc(s,4096*2,2)});
 	// f.do({arg f_; f_.bufnum.postln});
 	w=Window("Scope", Rect(10, Window.screenBounds.height-10,scope_widht*scope_j,scope_height*scope_i)).front;
 
+	r = Array.fill(scope_n,{arg i;
+		r = Rect((i%scope_j)*scope_widht,(i/scope_j).asInt*scope_height,scope_widht,scope_height);
+		r;
+	});
 	c = Array.fill(scope_n,
 		{arg i;
-			c = ScopeView(w,Rect((i%scope_j)*scope_widht,(i/scope_j).asInt*scope_height,scope_widht,scope_height));
+			c = ScopeView(w,r[i]);
 			c.bufnum = f[i].bufnum;
 			c.server_(s);
 			c.style=2;
@@ -65,9 +69,9 @@ s.waitForBoot{
 	}).add;
 
 	SynthDef.new(\scope,
-		{|bus=10, bufnum=0, offset=0, channels=2|
-			var x = In.ar(bus+offset, 2);
-			ScopeOut2.ar( x, bufnum);
+		{|bufnum=0, busx=0, busy=0, maxFrames=8192, scopeFrames=4096|
+			var x = [In.ar(busx), In.ar(busy)];
+			ScopeOut2.ar( x, bufnum, maxFrames, scopeFrames);
 	}).add;
 
 	SynthDef.new(\connection,
