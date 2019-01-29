@@ -14,10 +14,6 @@ class OdeNetwork(OrderedDict):
         ode.setup(config)
         self[name] = ode
 
-    def remove_ode(self, name):
-        self[name].remove()
-        del self[name]
-
     def read_yaml(self, filename):
         try:
             with open(filename, 'r') as fp:
@@ -36,7 +32,18 @@ class OdeNetwork(OrderedDict):
             if len(self.keys()) > len(ode_config.keys()):
                 for ode_name in set(self.keys()) - set(ode_config.keys()):
                     self.remove_ode(ode_name)
+        else:
+            print('clear')
+            self.remove_all()
+
+    def remove_ode(self, name):
+        self[name].remove()
+        del self[name]
 
     def __del__(self):
+        self.remove_all()
+
+    def remove_all(self):
         for ode_name in self:
-            self.remove_ode(ode_name)
+            self[ode_name].remove()
+        self.clear()

@@ -634,6 +634,13 @@ class SCLangServerManager(ServerManager):
         self.sclang.send(msg)
         return
 
+    def sclang_send(self, *args, address='/lode'):
+        msg = OSCMessage()
+        msg.setAddress(address)
+        msg.append(args)
+        self.sclang.send(msg)
+        return
+
     def loadRecorder(self):
         """ Loads an OSCFunc that starts/stops recording to a set path """
         self.loadSynthDef(LODE_RECORD_FILE)

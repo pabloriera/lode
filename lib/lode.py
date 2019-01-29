@@ -5,6 +5,7 @@ from OdeNetwork import OdeNetwork
 import argparse
 import pyinotify
 import pathlib
+import sys, os
 
 odes = OdeNetwork()
 
@@ -29,12 +30,21 @@ def groups_creation():
     SynthDef.set_groups(n_conn, n_param, n_gen, n_out)
 
 
+# def scope_window_creation():
+#     embed()
+#     DefaultServer.sclang_send(6, 3, 2, address='/lode/scope')
+
+
 def main(args):
     groups_creation()
+    # scope_window_creation()
 
     odes_yaml = str(pathlib.Path(args.odes_yaml[0]).absolute())
 
     if args.watch:
+        odes.read_yaml(odes_yaml)
+        # odes.read_yaml(odes_yaml)
+
         wm = pyinotify.WatchManager()
         wm.add_watch(odes_yaml, pyinotify.ALL_EVENTS, rec=True)
         # event handler
@@ -42,6 +52,8 @@ def main(args):
         # notifier
         notifier = pyinotify.Notifier(wm, eh)
         notifier.loop()
+        print('\nGood Bye')
+        odes.remove_all()
     else:
         odes.read_yaml(odes_yaml)
 

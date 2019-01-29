@@ -19,7 +19,7 @@
       return;                                                       \
     }
 
-typedef  void (*equation_def)(double X[], double t, double dX[], double param[]);
+typedef  void (*equation_def)(double X[], int n, double dX[], double param[]);
 
 // InterfaceTable contains pointers to functions in the host (server).
 static InterfaceTable *ft;
@@ -84,8 +84,8 @@ void Odemap_Ctor(Odemap* unit)
     // Print("Ode name %s",unit->m_string);
     // Print("Ode name %s",ode_name.c_str());
     std::string libname("odes/lib"+ode_name+".so");
-    Print("Ode name: %s", ode_name.c_str());
-    Print("Lib name: %s", libname.c_str());
+    Print("Ode name: %s\n", ode_name.c_str());
+    Print("Lib name: %s\n", libname.c_str());
     unit->handle = dlopen(libname.c_str(), RTLD_LAZY);
 
     if(unit->handle!=NULL)
@@ -171,7 +171,6 @@ void Odemap_next_a(Odemap *unit, int inNumSamples)
   float counter = unit->counter;
   
   unit->freq = IN0(unit->m_string_size+1+unit->N_EQ);
-  // Print("%s: FREC %g\n", unit->m_string, unit->freq);
 
   float samplesPerCycle;
   // double slope;
@@ -180,9 +179,11 @@ void Odemap_next_a(Odemap *unit, int inNumSamples)
     // slope = 1.f / samplesPerCycle;
   }
   else {
-    samplesPerCycle = 1.f;
+    samplesPerCycle = unit->mRate->mSampleRate;
     // slope = 1.f;
   }
+
+    // Print("%s: FREC %g\n", unit->m_string, samplesPerCycle);
 
   for(int k=0;k<unit->N_EQ;k++)
   {
@@ -197,7 +198,8 @@ void Odemap_next_a(Odemap *unit, int inNumSamples)
   for (int i=0; i < inNumSamples; ++i)
   {
     if(counter >= samplesPerCycle){
-      counter -= samplesPerCycle;
+      counter = 0;
+
 
       for(int k=0;k<unit->N_PARAMETERS;k++)
       {

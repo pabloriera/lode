@@ -5,8 +5,8 @@ s.waitForBoot{
 	var scope_n = 6;
 	var scope_i = 2;
 	var scope_j = 3;
-	var scope_widht = 380;
-	var scope_height = 380;
+	var scope_widht = 240;
+	var scope_height = 240;
 
 	f = Array.fill(scope_n,{arg i; Buffer.alloc(s,2048,2)});
 	// f.do({arg f_; f_.bufnum.postln});
@@ -52,74 +52,60 @@ s.waitForBoot{
 		'/lode/interpret'
 	);
 
-	SynthDef.new(\connection,
-		{| from=0, to=0, mul=1,add = 0 delay_time=0|
-			Out.ar(to,DelayL.ar(InFeedback.ar(from,1)*mul+add,1.0,delay_time));
-	}).add;
-
 	SynthDef.new(\value,
-		{| val=0, bus=10|
-			Out.ar(bus,DC.ar(1)*VarLag.kr(val,0.5));
+		{| val=0, bus=10, lag=0.1, arg1=0|
+			Out.ar(bus,DC.ar(1)*VarLag.kr(val+arg1,lag));
 	}).add;
 
 	SynthDef.new(\output,
-		{|bus=10, amp=0, pan=0|
-			Out.ar(0,Pan2.ar(LeakDC.ar(In.ar(bus,1)*(VarLag.kr(amp/2.0,0.5)**4)),pan));
+		{|bus=10, amp=0, pan=0, lag=0.1|
+			var amp_ = VarLag.kr(amp,lag)/2.0;
+			Out.ar(0,Pan2.ar(LeakDC.ar(In.ar(bus,1)*(amp_**4)),pan));
 
 	}).add;
 
 	SynthDef.new(\scope,
-		{|bus_x=10, bus_y=11, bufnum=0, channels=2|
-			var x = [In.ar(bus_x,1), In.ar(bus_y,1)];
+		{|bus=10, bufnum=0, offset=0, channels=2|
+			var x = In.ar(bus+offset, 2);
 			ScopeOut2.ar( x, bufnum);
 	}).add;
-	SynthDef.new(\noise,
-		{|mul=1, add=0, bus=10, arg1=6000|
-			var freq_ = VarLag.kr(arg1,0.5);
-			var mul_ = VarLag.kr(mul,0.5);
-			var add_ = VarLag.kr(add,0.5);
-			Out.ar(bus,LPF.ar(WhiteNoise.ar,freq_, mul_,add_));
+
+	SynthDef.new(\connection,
+		{| from=0, to=0, mul=1,add = 0, lag= 0.1, arg1=0|
+			var mul_ = VarLag.kr(mul,lag);
+			var add_ = VarLag.kr(add,lag);
+			var arg1_ = VarLag.kr(arg1,lag);
+			Out.ar(to,DelayC.ar(InFeedback.ar(from,1)*mul_+add_,1.0,arg1_));
 	}).add;
 
-	SynthDef.new(\sinosc,
-		{| mul=1, add=0, bus=10, arg1=0|
-			var mul_ = VarLag.kr(mul,0.5);
-			var add_ = VarLag.kr(add,0.5);
-			Out.ar(bus,SinOsc.ar(freq:arg1, mul:mul_, add:add_));
+	SynthDef.new(\noise,
+		{|mul=1, add=0, bus=10, lag=0.1, arg1=6000|
+			var freq_ = VarLag.kr(arg1,lag);
+			var mul_ = VarLag.kr(mul,lag);
+			var add_ = VarLag.kr(add,lag);
+			var arg1_ = VarLag.kr(arg1,lag);
+			Out.ar(bus,LPF.ar(WhiteNoise.ar,arg1_, mul_,add_));
+	}).add;
+
+
+	SynthDef.new(\sine,
+		{| mul=1, add=0, bus=10, lag=0.1, arg1=0|
+			var mul_ = VarLag.kr(mul,lag);
+			var add_ = VarLag.kr(add,lag);
+			var arg1_ = VarLag.kr(arg1,lag);
+			Out.ar(bus,SinOsc.ar(freq:arg1_, mul:mul_, add:add_));
+	}).add;
+
+	SynthDef.new(\sine1,
+		{| mul=1, add=0, bus=10, lag=0.1, arg1=0|
+			var mul_ = VarLag.kr(mul,lag);
+			var add_ = VarLag.kr(add,lag);
+			var arg1_ = VarLag.kr(arg1,lag);
+			Out.ar(bus,SinOsc.ar(freq:arg1_, mul:0.5, add:0.5)*mul_+add_);
 	}).add;
 
 };
 
+// MIDIClient.init(1,1);
+// MIDIIn.connectAll;
 )
-
-{SinOsc.ar(400)*0.2}.play
-
-
-
-c[0].xZoom=1;
-c[0].yZoom=0.2;
-c[0]
-
-c[1].xZoom=0.05;
-c[1].yZoom=0.05;
-
-c[2].style=2
-c[0].xZoom=0.1;
-c[0].yZoom=0.1;
-
-(
-
-)
-
-
-(
-AppClock.sched(0.1,{c[0].xZoom=0.2; nil;});
-)
-
-c[3].yZoom
-
-
-// ~c2 = Synth(\connect,target: 1011);
-// ~c2.set(\from,10,\to,41,\add,0,\mul,100.0,\del,0.01);
-// ~c2.free
-// {Odemap.ar("Map",1)}.play

@@ -15,6 +15,12 @@ from dictdiffer import diff
 sleep_time = 0.05
 default_initial_condition = 0.001
 scope_n = 6
+scope_i = 2
+scope_j = 3
+external_input_list = ['sine', 'sine1', 'tri', 'tri1', 'noise']
+input_bus_offset = 30
+output_bus_offset = 80
+default_lag = 0.05
 
 
 class SynthDef():
@@ -51,6 +57,7 @@ class SynthDef():
             self.server.send('/n_set', [self.node] + args)
 
     def free(self):
+        # print('Freeing', self.node)
         if self.node is not None:
             self.server.send('/n_free', [self.node])
 
@@ -88,14 +95,165 @@ class SCInputDef(SynthDef):
 class ScopeDef(SynthDef):
     scope_ix = 0
 
-    def __init__(self, bus_id_x, bus_id_y):
+    def __init__(self, bus_id, channels):
         super().__init__()
-        self.bus_id_x = bus_id_x
-        self.bus_id_y = bus_id_y
+        self.bus_id = bus_id
         self.bufnum = ScopeDef.scope_ix
-        self.new('scope', self.output_group, ['bus_x', bus_id_x, 'bus_y', bus_id_y, 'bufnum', self.bufnum], action=1)
+        self.new('scope', self.output_group, ['bus', bus_id, 'bufnum', self.bufnum, 'channels', channels], action=1)
         ScopeDef.scope_ix += 1
         ScopeDef.scope_ix = ScopeDef.scope_ix % scope_n
+        print('scope_ix', ScopeDef.scope_ix)
+
+
+class Bus():
+    def __init__(self):
+        self.get_next_bus(self)
+        # if DEBUG:
+        # print('New class', self, 'bus id:',
+        # self.bus_id, 'bus_counter:', self.bus_counter)
+
+    @classmethod
+    def get_next_bus(cls, instance):
+        instance.bus_id = cls.bus_counter
+        cls.bus_counter += 1
+
+
+class InputBus(Bus):
+    bus_counter = input_bus_offset
+
+    def __init__(self):
+        super().__init__()
+
+
+class OutputBus(Bus):
+    bus_counter = output_bus_offset
+
+    def __init__(self):
+        super().__init__()
+
+
+class Parameter():
+    def __init__(self, name, bus_id, ode):
+        self.ode = ode
+        self.name = name
+        self.bus_id = bus_id
+        # self.formula = None
+        self.prev_external_inputs = {}
+        self.external_inputs_conn = OrderedDict()
+        self.value = ValueDef(bus_id)
+
+    def update(self, value_or_formula, lag=default_lag):
+        if isinstance(value_or_formula, str):
+            parsed = parse_parameter_formula(value_or_formula)
+            if parsed is not None:
+                add, self.external_inputs = parsed
+                if add != 0:
+                    self.value.set(val=add, lag=lag)
+                self.do_connections(lag=lag)
+        else:
+            self.value.set(val=value_or_formula, lag=lag)
+            self.prev_external_inputs = {}
+            self.external_inputs_conn.clear()
+            # [v.free() for k, v in self.external_inputs_conn.items()]
+
+    def do_connections(self, lag=default_lag):
+        try:
+            # print(self.prev_external_inputs, '\n', self.external_inputs)
+            diffs = list(diff(self.prev_external_inputs, self.external_inputs))
+            print(diffs)
+            for d in diffs:
+                update_ts = {}
+                if d[0] == 'change':
+                    external_input = d[1].split('.')[0]
+                    update_ts[external_input] = self.external_inputs[external_input]
+
+                elif d[0] == 'add':
+                    for external_input, t in d[2]:
+                        if 'var' in t:
+                            if external_input in self.ode.ode_network:
+                                update_ts[external_input] = t
+                                self.external_inputs_conn[external_input] = Connection(self.ode.ode_network[external_input],
+                                                                                       t['var'], self.ode, self.name, mul=t['mul'])
+                            else:
+                                self.external_inputs.pop(external_input)
+                        else:
+                            if external_input in external_input_list:
+                                update_ts[external_input] = t
+                                self.external_inputs_conn[external_input] = SCInputDef(self.bus_id, external_input)
+
+                            if external_input == 'value':
+                                update_ts[external_input] = t
+                                self.external_inputs_conn[external_input] = self.value
+
+                elif d[0] == 'remove':
+                    for external_input, t_ in d[2]:
+                        if external_input in self.external_inputs_conn:
+                            self.external_inputs_conn[external_input].free()
+
+                for external_input, t in update_ts.items():
+                    # print(external_input, t)
+
+                    if external_input in external_input_list or external_input in self.ode.ode_network or external_input == 'value':
+                        self.external_inputs_conn[external_input].set(lag=lag, mul=t['mul'])
+                        if t.get('args', None):
+                            args = {arg: float(val) for arg, val in t['args'].items()}
+                            self.external_inputs_conn[external_input].set(lag=lag, **args)
+                        if t.get('midi', None):
+                            node = self.external_inputs_conn[external_input].node
+                            self.assign_midi(node, t['midi'])
+
+            self.prev_external_inputs = self.external_inputs
+
+        except Exception as e:
+            print(e)
+            embed()
+
+    def assign_midi(self, node, args):
+        for k, v in args.items():
+            cc = int(v.args[0])
+            min_ = float(v.args[1])
+            max_ = float(v.args[2])
+
+            command = """
+            MIDIdef(\\cc{cc}).free;
+            MIDIdef.cc(\\cc{cc}, {{arg val, chan, arg2, arg3;
+                s.sendMsg("/n_set",{node},"{arg}",val/127.0*({max} - {min}) + {min});}}, {cc});
+            """.format(node=node, cc=cc, arg=k, min=min_, max=max_)
+
+            self.ode.server.loadSynthDef(command, address='/lode/interpret')
+
+
+class Connection():
+    def __init__(self, from_ode, from_var, to_ode, to_parameter, mul=1, add=0, delay_time=0):
+        self.from_ode = from_ode
+        self.from_var = from_var
+        self.to_ode = to_ode
+        self.to_parameter = to_parameter
+
+        self.from_bus = from_ode.outputs[from_var].bus_id
+        self.to_bus = to_ode.parameters[to_parameter].bus_id
+
+        self.mul = mul
+        self.add = add
+        self.delay_time = delay_time
+        print('Connecting', 'from', from_ode.Name, from_var, 'to', to_ode.Name, to_parameter, 'mul', mul, 'add', add, 'delay_time', delay_time)
+        self.connect()
+        self.node = self.connect_def.node
+
+    def connect(self):
+        self.connect_def = ConnectDef(self.from_bus, self.to_bus, self.mul, self.add, self.delay_time)
+
+    def set(self, **kwargs):
+        self.connect_def.set(**kwargs)
+
+    def update(self, **kwargs):
+        self.connect_def.set(**kwargs)
+
+    def __del__(self):
+        self.free()
+
+    def free(self):
+        self.connect_def.free()
 
 
 class Ode(SynthDef):
@@ -124,21 +282,31 @@ class Ode(SynthDef):
         self.parameters = OrderedDict()
         self.parameters_formulas = OrderedDict()
         self.connections = OrderedDict()
+        self.lag = default_lag
 
     def setup(self, config):
-        self.set_equation(config['equation'], functions=config.get('functions', None))
-        if 'init' in config:
-            self.update_initial_conditions(config['init'])
-        else:
-            self.config['init'] = {k: default_initial_condition for k in self.variables}
 
         if 'discrete' in config.keys():
             self.discrete = config['discrete']
+        else:
+            self.discrete = None
+
+        self.set_equation(config['equation'], functions=config.get('functions', None))
+        self.config['init'] = {k: default_initial_condition for k in self.variables}
+        if 'init' in config:
+            self.update_initial_conditions(config['init'])
+
+        if self.discrete is not None:
             equation_parameters_ = ['hz'] + self.equation_parameters
         else:
             equation_parameters_ = self.equation_parameters
 
         self.create_parameters(equation_parameters_)
+
+        if 'lag' in config:
+            self.lag = config['lag']
+        else:
+            self.lag = default_lag
 
         if 'parameters' in config:
             self.update_parameters(config['parameters'])
@@ -165,8 +333,9 @@ class Ode(SynthDef):
             else:
                 print(self.Name, 'Eq change')
                 if self.variables == list(sorted(config['equation'].keys())):
+                    embed()
                     print(self.Name, 'Eq same variables')
-                    self.set_equation(config['equation'])
+                    self.set_equation(config['equation'], functions=config.get('functions', None))
                     # Must check what parameters are new and add them
 
                     # self.update_parameters(config['parameters'])
@@ -174,8 +343,9 @@ class Ode(SynthDef):
                     self.subsitute_and_build()
                 else:
                     print(self.Name, 'Eq not same variables')
+                    embed()
                     self.remove()
-                    self.__init__(self.name)
+                    self.__init__(self.name, self.ode_network)
                     self.setup(config)
 
         if 'init' in config:
@@ -183,6 +353,11 @@ class Ode(SynthDef):
 
         if 'output' in config:
             self.update_outputs(config['output'])
+
+        if 'lag' in config:
+            self.lag = config['lag']
+        else:
+            self.lag = default_lag
 
         if 'parameters' in config:
             self.update_parameters(config['parameters'])
@@ -194,9 +369,9 @@ class Ode(SynthDef):
         if isinstance(equation, dict):
             expresions = {}
             for k, v in equation.items():
-                compiled = parse_equation(v)
-                if compiled is not None:
-                    expresions[k] = compiled
+                peq = parse_equation(v)
+                if peq is not None:
+                    expresions[k] = peq
                     valid = True
                 else:
                     valid = False
@@ -206,7 +381,11 @@ class Ode(SynthDef):
                 self.config['equation'] = equation
                 self.variables = list(sorted(self.config['equation'].keys()))
                 parameters_ = []
-                no_parameters = self.variables + ['pi', 't']
+                no_parameters = self.variables + ['pi']
+                if self.discrete is not None:
+                    no_parameters += ['n']
+                else:
+                    no_parameters += ['t']
 
                 free_symbols = set()
                 for k, v in equation.items():
@@ -235,11 +414,14 @@ class Ode(SynthDef):
                 else:
                     self.functions = None
 
+    def __del__(self):
+        self.remove()
+
     def remove(self):
         for k in self.outputs:
             self.outputs[k].free()
         for k in self.parameters:
-            self.parameters[k].connections.remove_all()
+            self.parameters[k].external_inputs_conn.clear()
             self.parameters[k].value.free()
         self.free()
 
@@ -271,14 +453,19 @@ class Ode(SynthDef):
         else:
             functions = ''
 
+        if self.discrete:
+            torn = 'int n'
+        else:
+            torn = 'double t'
+
         # add more constants
         self.equation_str = self.equation_str.replace('pi', 'PI')
         subs = {'N_EQ': len(self.variables), 'N_PARAMETERS': len(self.equation_parameters),
-                'EQUATION': self.equation_str, 'FUNCTIONS': functions}
+                'EQUATION': self.equation_str, 'FUNCTIONS': functions, 'TorN': torn}
         template_read_sub_write(ode_template_filename, self.ode_source_filename, subs)
 
     def do_sc_def(self):
-        if self.discrete:
+        if self.discrete is not None:
             rk4_or_discrete = 'Odemap'
         else:
             rk4_or_discrete = 'Oderk4'
@@ -288,8 +475,13 @@ class Ode(SynthDef):
         initial_conditions = ','.join(['init_{}'.format(i) for i, var in enumerate(self.variables)])
         initial_conditions_args = ','.join(['init_{}={}'.format(i, str(self.config['init'][var])) for i, var in enumerate(self.variables)])
 
+        impulse = ''
+        if self.discrete is not None:
+            if self.discrete == 'impulse':
+                impulse = '*Impulse.ar(inputs[0])'
+
         subs = {'rk4_or_discrete': rk4_or_discrete, 'Ode_name': self.Name, 'inputs': inputs, 'outputs': outputs,
-                'initial_conditions': initial_conditions, 'initial_conditions_args': initial_conditions_args}
+                'initial_conditions': initial_conditions, 'initial_conditions_args': initial_conditions_args, 'impulse': impulse}
         template_read_sub_write(sc_def_template_filename, self.sc_def_filename, subs)
 
     def build(self):
@@ -316,18 +508,15 @@ class Ode(SynthDef):
             init_set_ = {'init_{}'.format(self.variables.index(v)): config[v] for v in config}
             print(init_set_)
             self.set(**init_set_)
-            self.config['init'] = config
+            self.config['init'].update(config)
 
     def create_scope(self):
         if self.scope is not None:
             self.scope.free()
 
-        bus_id_x = list(self.output_bus.values())[0].bus_id
-        if len(self.output_bus) > 1:
-            bus_id_y = list(self.output_bus.values())[1].bus_id
-        else:
-            bus_id_y = bus_id_x
-        self.scope = ScopeDef(bus_id_x, bus_id_y)
+        bus_id = list(self.output_bus.values())[0].bus_id
+        channels = len(self.output_bus)
+        self.scope = ScopeDef(bus_id, channels)
 
     def update_scope(self, config):
         if self.config.get('scope', None) == config:
@@ -337,7 +526,8 @@ class Ode(SynthDef):
             self.config['scope'] = config
             if 'channels' in config:
                 self.scope.set(channels=config.pop('channels'))
-
+            if 'offset' in config:
+                self.scope.set(offset=config.pop('offset'))
             for k, v in config.items():
                 command = 'AppClock.sched(0.1,{{c[{scope_ix}].{key}={value}; nil;}});'.format(scope_ix=self.scope.bufnum, key=k, value=v)
                 self.server.loadSynthDef(command, address='/lode/interpret')
@@ -376,129 +566,4 @@ class Ode(SynthDef):
             self.config['parameters'] = config
             for name in config:
                 if name in self.parameters:
-                    self.parameters[name].update(config[name])
-
-
-class Bus():
-    def __init__(self):
-        self.get_next_bus(self)
-        # if DEBUG:
-        # print('New class', self, 'bus id:',
-        # self.bus_id, 'bus_counter:', self.bus_counter)
-
-    @classmethod
-    def get_next_bus(cls, instance):
-        instance.bus_id = cls.bus_counter
-        cls.bus_counter += 1
-
-
-class InputBus(Bus):
-    bus_counter = 40
-
-    def __init__(self):
-        super().__init__()
-
-
-class OutputBus(Bus):
-    bus_counter = 10
-
-    def __init__(self):
-        super().__init__()
-
-
-class Parameter():
-    def __init__(self, name, bus_id, ode):
-        self.ode = ode
-        self.name = name
-        self.bus_id = bus_id
-        # self.formula = None
-        self.prev_external_inputs = {}
-        self.external_inputs_conn = OrderedDict()
-        self.value = ValueDef(bus_id)
-
-    def update(self, value_or_formula):
-        if isinstance(value_or_formula, str):
-            parsed = parse_parameter_formula(value_or_formula)
-            if parsed is not None:
-                add, self.external_inputs = parsed
-                if add != 0:
-                    self.value.set(val=add)
-                self.do_connections()
-        else:
-            self.value.set(val=value_or_formula)
-            [v.free() for k, v in self.external_inputs_conn.items()]
-
-    def do_connections(self):
-        try:
-            print(self.external_inputs)
-            diffs = list(diff(self.prev_external_inputs, self.external_inputs))
-            print(diffs)
-            for d in diffs:
-                update_ts = {}
-                if d[0] == 'change':
-                    external_input = d[1].split('.')[0]
-                    update_ts[external_input] = self.external_inputs[d[1].split('.')[0]]
-
-                elif d[0] == 'add':
-                    for external_input, t in d[2]:
-                        if 'var' in t:
-                            if external_input in self.ode.ode_network:
-                                update_ts[external_input] = t
-                                self.external_inputs_conn[external_input] = Connection(self.ode.ode_network[external_input],
-                                                                                       t['var'], self.ode, self.name, mul=t['mul'],
-                                                                                       delay_time=t['delay_time'])
-                            else:
-                                self.external_inputs.pop(external_input)
-                        else:
-                            update_ts[external_input] = t
-                            self.external_inputs_conn[external_input] = SCInputDef(self.bus_id, external_input)
-
-                elif d[0] == 'remove':
-                    for external_input, t_ in d[2]:
-                        self.external_inputs_conn[external_input].free()
-
-                for external_input, t in update_ts.items():
-                    print(t)
-                    self.external_inputs_conn[external_input].set(mul=t['mul'])
-                    if 'args' in t:
-                        args = {'arg{}'.format(i + 1): float(arg) for i, arg in enumerate(t['args'])}
-                        self.external_inputs_conn[external_input].set(**args)
-                    if 'delay_time' in t:
-                        self.external_inputs_conn[external_input].set(delay_time=t['delay_time'])
-            self.prev_external_inputs = self.external_inputs
-
-        except Exception as e:
-            print(e)
-            embed()
-
-
-class Connection():
-    def __init__(self, from_ode, from_var, to_ode, to_parameter, mul=1, add=0, delay_time=0):
-        self.from_ode = from_ode
-        self.from_var = from_var
-        self.to_ode = to_ode
-        self.to_parameter = to_parameter
-
-        self.from_bus = from_ode.outputs[from_var].bus_id
-        self.to_bus = to_ode.parameters[to_parameter].bus_id
-
-        self.mul = mul
-        self.add = add
-        self.delay_time = delay_time
-        print('Connecting', 'from', from_ode.Name, from_var, 'to', to_ode.Name, to_parameter, 'mul', mul, 'add', add, 'delay_time', delay_time)
-        self.connect()
-
-    def connect(self):
-        self.connect_def = ConnectDef(self.from_bus, self.to_bus, self.mul, self.add, self.delay_time)
-
-    def set(self, **kwargs):
-        self.connect_def.set(**kwargs)
-
-    def update(self, **kwargs):
-        self.connect_def.set(**kwargs)
-
-    def __del__(self):
-        self.free()
-
-    def free(self):
-        self.connect_def.free()
+                    self.parameters[name].update(config[name], lag=self.lag)

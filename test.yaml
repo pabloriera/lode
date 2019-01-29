@@ -3,10 +3,10 @@ logistic:
   equation:
     x: r*x*(1-x)
   init:
-    x: 0.01
+    x: 0.5
   parameters:
     r: 3.9
-    hz: 1.0
+    hz: 10.0
   scope:
     style: 0
     xZoom: 1
@@ -15,19 +15,19 @@ logistic:
 
 hopf:
   equation:
-    x: ' 2*pi*y*w + (e*x-x*(x*x+y*y)+i)*s'
-    y: '-2*pi*x*w + (e*y-y*(x*x+y*y)+i)*s'
+    x:  2*pi*y*w + (e*x-x*(x*x+y*y)+i)*s
+    y: -2*pi*x*w + (e*y-y*(x*x+y*y)+i)*s
   parameters:
-    w: 200 #+ logistic.x*200
-    e: 3.0 #+ hopf.y[-0.05]*10.0
+    w: midicc(0,0,2000) #+ logistic.x*200
+    e: midicc(16,-2,10)
     s: 100.0
-    i: 0.00  + sinosc(4.0)*100.0 + noise(200)*200.0 + hopf.x[-0.01]*10.0
+    i: 0.0 + sinosc(midicc(1,0.0,80.0))*midicc(2,0,200) + noise(500)*midicc(3,0,800) + hopf.x(midicc(4,0,0.02))*midicc(5,-20,20)
   output:
     x: {gain: 0.8, pan: -1}
     y: {gain: 0.8, pan: 1}
   init:
-    x: 0.1
-    y: 0.1 
+    x: 0.01
+    y: 0.01
   scope:
     style: 2
     xZoom: 0.1

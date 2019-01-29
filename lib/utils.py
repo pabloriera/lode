@@ -1,4 +1,5 @@
 from sympy.parsing.sympy_parser import parse_expr
+from sympy import sympify
 from string import Template
 import pathlib
 import sys
@@ -57,39 +58,58 @@ def parse_equation(eq):
     except Exception as e:
         print('Syntax formula error')
         print(e)
-        # embed()
+        embed()
         return None
 
 
 def parse_parameter_formula(formula_string):
     try:
         formula_string = re.sub(r'\.([a-zA-Z]+)', r'_var_\1', formula_string)
-        # embed()
-        formula_string = re.sub(r'\[-(\d+)\.?(\d+)?\]', r'_del_\1_\2', formula_string)
         expr = parse_expr(formula_string)
         add, expr = expr.as_coeff_Add()
         terms, syms = expr.as_terms()
         external_inputs = {}
         for t in terms:
             if t[0] != 0:
-                term_sym = syms[t[1][1].index(1)]
+                d = {'mul': t[1][0][0]}
+
+                if sum(t[1][1]) == 2:
+                    k = [s for i, s in enumerate([syms[i] for i, v in enumerate(t[1][1]) if v == 1]) if 'midicc' in str(s.func)][0]
+                    term_sym = t[0].replace(k, 1)
+                    d['midi'] = {'mul': k}
+                else:
+                    term_sym = syms[t[1][1].index(1)]
+
                 term_var = str(term_sym)
-                node = term_var.split('_')[0]
+                func = str(term_sym.func)
+
+                if func == 'midicc':
+                    v = sympify('value(x)')
+                    term_sym = v.replace(v.args[0], term_sym)
+                    func = str(term_sym.func)
+
+                if len(term_sym.args) > 0:
+                    args = {}
+                    midi = {}
+                    for i, arg in enumerate(term_sym.args):
+                        if 'midicc' in str(arg):
+                            midi['arg{}'.format(i + 1)] = arg
+                        else:
+                            args['arg{}'.format(i + 1)] = arg
+
+                    d['args'] = args
+                    if 'midi' in d:
+                        d['midi'].update(midi)
+                    else:
+                        d['midi'] = midi
+
                 if 'var' in term_var:
                     var = re.findall(r'var_([a-zA-Z]+)', term_var)[0]
+                    d.update({'var': var})
+                    node = term_var.split('_')[0]
+                    external_inputs[node] = d
                 else:
-                    var = None
-                if 'del' in term_var:
-                    delay_time = float('.'.join(re.findall(r'del_(\d+)_?(\d+)?', term_var)[0]))
-                else:
-                    delay_time = 0
-
-                if var is not None:
-                    external_inputs[node] = {'mul': t[1][0][0], 'var': var, 'delay_time': delay_time}
-                else:
-                    external_inputs[str(term_sym.func)] = {'mul': t[1][0][0]}
-                    if len(term_sym.args) > 0:
-                        external_inputs[str(term_sym.func)].update({'args': term_sym.args, })
+                    external_inputs[func] = d
 
         return float(add), external_inputs
 
