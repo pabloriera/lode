@@ -119,7 +119,10 @@ class ScopeDef(SynthDef):
         super().__init__()
         self.bufnum = ScopeDef.scope_ix
         self.new('scope', self.output_group, [
-                 'bufnum', self.bufnum, 'bux', channels[0], 'busy', channels[1]], action=1)
+                 'bufnum', self.bufnum,
+                 'busx', channels[0],
+                 'busy', channels[1]
+                 ], action=1)
         ScopeDef.scope_ix += 1
         ScopeDef.scope_ix = ScopeDef.scope_ix % scope_n
 
@@ -228,7 +231,6 @@ class Parameter():
             print('Error in do_connections')
             print(e)
             pass
-            # embed()
 
     def assign_midi(self, node, args):
         for k, v in args.items():
@@ -359,7 +361,6 @@ class Ode(SynthDef):
             else:
                 print(self.Name, 'Eq change')
                 if self.variables == list(sorted(config['equation'].keys())):
-                    # embed()
                     print(self.Name, 'Eq same variables')
                     prev_parameters = self.equation_parameters
                     self.set_equation(
@@ -377,15 +378,14 @@ class Ode(SynthDef):
                         #         new_equation_parameters.append(p)
                         #     self.create_parameters(new_equation_parameters)
                         #
-                        # if 'parameters' in config:
-                        #     self.update_parameters(config['parameters'])
+                        if 'parameters' in config:
+                            self.update_parameters(config['parameters'])
                         #
                         # self.free()
                         # self.subsitute_and_build()
                         # self.load_synth()
                         # sleep(sleep_time)
                         # self.create_synth()
-                        # embed()
 
                         self.remove()
                         sleep(sleep_time)
@@ -502,7 +502,6 @@ class Ode(SynthDef):
                             'param[{}]'.format(i), eq, flags=re.IGNORECASE)
 
             if self.discrete is not None:
-                # embed()
                 for i, x in enumerate(self.variables):
                     eq = re.sub(r'\b{}_(\d)\b'.format(
                         x), r'$[{}*HISTORY_SIZE+wrap(history_position+1-\1,HISTORY_SIZE)]'.format(i), eq, flags=re.IGNORECASE)

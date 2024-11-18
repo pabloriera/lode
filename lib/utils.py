@@ -59,7 +59,6 @@ def parse_equation(eq):
     except Exception as e:
         print('Syntax formula error')
         print(e)
-        # embed()
         return None
 
 
@@ -118,5 +117,4 @@ def parse_parameter_formula(formula_string):
     except Exception as e:
         print('Syntax formula error')
         print(e)
-        # embed()
         return None
