@@ -4,6 +4,7 @@
 #include <iostream>
 #define PI 3.141592653589793238462
 #define MAX_CHANNELS 8
+#define HISTORY_SIZE 16
 
 #define typeof(x) __typeof__(x)
 
@@ -19,7 +20,7 @@
       return;                                                       \
     }
 
-typedef  void (*equation_def)(double X[], int n, double dX[], double param[]);
+typedef  void (*equation_def)(double X[], int n, double dX[], double param[], double history[], int history_position, int HISTORY_SIZE_);
 
 // InterfaceTable contains pointers to functions in the host (server).
 static InterfaceTable *ft;
@@ -41,13 +42,10 @@ struct Odemap : public Unit
     double *Xtemp;
     double *dx;
     double freq;
+    double *history;
+    int history_position;
 };
 
-void apply_map(Odemap* unit)
-{
-  
-
-}
 
 // declare unit generator functions
 static void Odemap_next_a(Odemap *unit, int inNumSamples);
@@ -108,8 +106,10 @@ void Odemap_Ctor(Odemap* unit)
       RTALLOC_AND_CHECK(unit->dx, unit->N_EQ * sizeof(double));
       RTALLOC_AND_CHECK(unit->X_init, unit->N_EQ * sizeof(double));
       RTALLOC_AND_CHECK(unit->param, unit->N_PARAMETERS * sizeof(double));
+      RTALLOC_AND_CHECK(unit->history,  unit->N_EQ*HISTORY_SIZE * sizeof(double));
 
       unit->n = 0;
+      unit->history_position = 0;
 
       for(int k=0;k<unit->N_EQ;k++)
       {
@@ -150,6 +150,7 @@ void Odemap_Dtor(Odemap* unit)
     RTFree(unit->mWorld, unit->X );
     RTFree(unit->mWorld, unit->param );
     RTFree(unit->mWorld, unit->Xtemp );
+    RTFree(unit->mWorld, unit->history );
     Print("%s: All Free", unit->m_string);
     dlclose(unit->handle);
     Print("%s: Closed", unit->m_string);
@@ -206,13 +207,16 @@ void Odemap_next_a(Odemap *unit, int inNumSamples)
         unit->param[k] = zapgremlins(IN(unit->m_string_size+1+k+unit->N_EQ+1)[i]);
       }
 
-      unit->equation( unit->X, unit->n, unit->Xtemp, unit->param);
+      unit->equation( unit->X, unit->n, unit->Xtemp, unit->param, unit->history, unit->history_position, HISTORY_SIZE);
       unit->n++;
 
       for(int k=0;k<unit->N_EQ;k++)
       {
         unit->X[k] = unit->Xtemp[k];
+        unit->history[k*HISTORY_SIZE + unit->history_position] = unit->Xtemp[k]; 
       }
+      unit->history_position++;
+      unit->history_position = unit->history_position % HISTORY_SIZE;
 
 
       // Linear Interp

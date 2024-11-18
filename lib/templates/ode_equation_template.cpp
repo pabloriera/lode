@@ -15,9 +15,9 @@ extern "C"
         x[1] = N_PARAMETERS;
     }
 
-    void equation(double X[], $TorN, double dX[], double param[])
+    void equation(double X[], double t, double dX[], double param[])
     {
-    $EQUATION
+        $EQUATION
     }
 
 }

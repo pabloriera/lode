@@ -17,7 +17,7 @@ sudo apt-get install build-essential cmake supercollider-dev
 Then, install Python dependencies:
 
 ```
-pip install -r --user requirements.txt
+pip install -r requirements.txt
 ```
 
 Go to Extensions/{Oderk4,Odemap} folder and execute `build_and_cp.sh`.  This will copy the
@@ -36,7 +36,7 @@ cd lib/ && sclang -D lode.scd
 On another terminal run:
 
 ```
-python3 lib/lode.py -w odes.yaml
+python lib/lode.py -w odes.yaml
 ```
 
 Now open the `odes.yaml` file and save it, sound should appear automatically.

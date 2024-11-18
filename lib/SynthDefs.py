@@ -1,3 +1,4 @@
+from typing import Iterable
 from IPython import embed
 import re
 import subprocess
@@ -6,7 +7,7 @@ from shutil import copy2
 import shlex
 from utils import template_read_sub, template_read_sub_write, parse_equation
 from directories import sc_extensions_path, home_path, sources_path
-from directories import ode_template_filename, sc_def_template_filename, function_template_filename
+from directories import ode_template_filename, sc_def_template_filename, function_template_filename, map_template_filename
 from time import sleep
 from collections import OrderedDict
 from utils import parse_parameter_formula
@@ -17,10 +18,24 @@ default_initial_condition = 0.001
 scope_n = 6
 scope_i = 2
 scope_j = 3
-external_input_list = ['sine', 'sine1', 'tri', 'tri1', 'noise']
+external_input_list = ['sine', 'sine1', 'tri', 'tri1', 'noise', 'input']
 input_bus_offset = 30
 output_bus_offset = 80
 default_lag = 0.05
+
+
+def groups_creation(server):
+    SynthDef.set_server(server)
+    # Groups creation
+    n_conn = server.nextnodeID()
+    server.send('/g_new', [n_conn, 1])
+    n_param = server.nextnodeID()
+    server.send('/g_new', [n_param])
+    n_gen = server.nextnodeID()
+    server.send('/g_new', [n_gen, 1])
+    n_out = server.nextnodeID()
+    server.send('/g_new', [n_out, 1])
+    SynthDef.set_groups(n_conn, n_param, n_gen, n_out)
 
 
 class SynthDef():
@@ -61,6 +76,10 @@ class SynthDef():
         if self.node is not None:
             self.server.send('/n_free', [self.node])
 
+    def run(self, flag):
+        if self.node is not None:
+            self.server.send('/n_run', [self.node, int(flag)])
+
     def __del__(self):
         self.free()
 
@@ -75,7 +94,8 @@ class OutputDef(SynthDef):
 class ConnectDef(SynthDef):
     def __init__(self, from_, to, mul=1, add=0, delay_time=0):
         super().__init__()
-        self.new('connection', self.connect_group, ['from', from_, 'to', to, 'mul', mul, 'add', add, 'del', delay_time], action=1)
+        self.new('connection', self.connect_group, [
+                 'from', from_, 'to', to, 'mul', mul, 'add', add, 'del', delay_time], action=1)
 
 
 class ValueDef(SynthDef):
@@ -98,10 +118,10 @@ class ScopeDef(SynthDef):
     def __init__(self, channels):
         super().__init__()
         self.bufnum = ScopeDef.scope_ix
-        self.new('scope', self.output_group, ['bufnum', self.bufnum, 'bux', channels[0], 'busy', channels[1]], action=1)
+        self.new('scope', self.output_group, [
+                 'bufnum', self.bufnum, 'bux', channels[0], 'busy', channels[1]], action=1)
         ScopeDef.scope_ix += 1
         ScopeDef.scope_ix = ScopeDef.scope_ix % scope_n
-        print('scope_ix', ScopeDef.scope_ix)
 
 
 class Bus():
@@ -175,7 +195,8 @@ class Parameter():
                         else:
                             if external_input in external_input_list:
                                 update_ts[external_input] = t
-                                self.external_inputs_conn[external_input] = SCInputDef(self.bus_id, external_input)
+                                self.external_inputs_conn[external_input] = SCInputDef(
+                                    self.bus_id, external_input)
 
                             if external_input == 'value':
                                 update_ts[external_input] = t
@@ -187,13 +208,16 @@ class Parameter():
                             self.external_inputs_conn[external_input].free()
 
                 for external_input, t in update_ts.items():
-                    # print(external_input, t)
+                    if external_input in external_input_list or external_input == self.ode.name\
+                            or external_input == 'value' or external_input in self.ode.ode_network:
 
-                    if external_input in external_input_list or external_input in self.ode.ode_network or external_input == 'value':
-                        self.external_inputs_conn[external_input].set(lag=lag, mul=t['mul'])
+                        self.external_inputs_conn[external_input].set(
+                            lag=lag, mul=t['mul'])
                         if t.get('args', None):
-                            args = {arg: float(val) for arg, val in t['args'].items()}
-                            self.external_inputs_conn[external_input].set(lag=lag, **args)
+                            args = {arg: float(val)
+                                    for arg, val in t['args'].items()}
+                            self.external_inputs_conn[external_input].set(
+                                lag=lag, **args)
                         if t.get('midi', None):
                             node = self.external_inputs_conn[external_input].node
                             self.assign_midi(node, t['midi'])
@@ -202,7 +226,8 @@ class Parameter():
 
         except Exception as e:
             print(e)
-            embed()
+            pass
+            # embed()
 
     def assign_midi(self, node, args):
         for k, v in args.items():
@@ -232,12 +257,14 @@ class Connection():
         self.mul = mul
         self.add = add
         self.delay_time = delay_time
-        print('Connecting', 'from', from_ode.Name, from_var, 'to', to_ode.Name, to_parameter, 'mul', mul, 'add', add, 'delay_time', delay_time)
+        print('Connecting', 'from', from_ode.Name, from_var, 'to', to_ode.Name,
+              to_parameter, 'mul', mul, 'add', add, 'delay_time', delay_time)
         self.connect()
         self.node = self.connect_def.node
 
     def connect(self):
-        self.connect_def = ConnectDef(self.from_bus, self.to_bus, self.mul, self.add, self.delay_time)
+        self.connect_def = ConnectDef(
+            self.from_bus, self.to_bus, self.mul, self.add, self.delay_time)
 
     def set(self, **kwargs):
         self.connect_def.set(**kwargs)
@@ -287,8 +314,10 @@ class Ode(SynthDef):
         else:
             self.discrete = None
 
-        self.set_equation(config['equation'], functions=config.get('functions', None))
-        self.config['init'] = {k: default_initial_condition for k in self.variables}
+        self.set_equation(config['equation'],
+                          functions=config.get('functions', None))
+        self.config['init'] = {
+            k: default_initial_condition for k in self.variables}
         if 'init' in config:
             self.update_initial_conditions(config['init'])
 
@@ -329,17 +358,41 @@ class Ode(SynthDef):
             else:
                 print(self.Name, 'Eq change')
                 if self.variables == list(sorted(config['equation'].keys())):
-                    embed()
+                    # embed()
                     print(self.Name, 'Eq same variables')
-                    self.set_equation(config['equation'], functions=config.get('functions', None))
+                    prev_parameters = self.equation_parameters
+                    self.set_equation(
+                        config['equation'], functions=config.get('functions', None))
                     # Must check what parameters are new and add them
 
-                    # self.update_parameters(config['parameters'])
-                    # self.create_parameters(equation_parameters_)
-                    self.subsitute_and_build()
+                    if set(prev_parameters) == set(self.equation_parameters):
+                        print(self.Name, 'Param in eq no change')
+                        self.subsitute_and_build()
+                    else:
+                        print(self.Name, 'Param in eq change')
+                        # if len(set(self.equation_parameters))>len(set(prev_parameters)):
+                        #     new_equation_parameters = []
+                        #     for p in set(self.equation_parameters)-set(prev_parameters):
+                        #         new_equation_parameters.append(p)
+                        #     self.create_parameters(new_equation_parameters)
+                        #
+                        # if 'parameters' in config:
+                        #     self.update_parameters(config['parameters'])
+                        #
+                        # self.free()
+                        # self.subsitute_and_build()
+                        # self.load_synth()
+                        # sleep(sleep_time)
+                        # self.create_synth()
+                        # embed()
+
+                        self.remove()
+                        sleep(sleep_time)
+                        self.__init__(self.name, self.ode_network)
+                        self.setup(config)
+
                 else:
                     print(self.Name, 'Eq not same variables')
-                    embed()
                     self.remove()
                     self.__init__(self.name, self.ode_network)
                     self.setup(config)
@@ -352,6 +405,7 @@ class Ode(SynthDef):
 
         if 'lag' in config:
             self.lag = config['lag']
+            print(self.lag)
         else:
             self.lag = default_lag
 
@@ -360,6 +414,9 @@ class Ode(SynthDef):
 
         if 'scope' in config:
             self.update_scope(config['scope'])
+
+        if 'run' in config:
+            self.run(config['run'])
 
     def set_equation(self, equation, functions=None):
         if isinstance(equation, dict):
@@ -376,29 +433,38 @@ class Ode(SynthDef):
             if valid:
                 self.config['equation'] = equation
                 self.variables = list(sorted(self.config['equation'].keys()))
+
                 parameters_ = []
                 no_parameters = self.variables + ['pi']
+                no_parameters += ['n']
                 if self.discrete is not None:
-                    no_parameters += ['n']
+                    if self.discrete is not None:
+                        for v in self.variables:
+                            for _, eq in equation.items():
+                                no_parameters += re.findall(
+                                    r'\b{}_\d\b'.format(v), eq)
+
                 else:
                     no_parameters += ['t']
 
                 free_symbols = set()
                 for k, v in equation.items():
-                    free_symbols = free_symbols.union(map(str, expresions[k].free_symbols))
+                    free_symbols = free_symbols.union(
+                        map(str, expresions[k].free_symbols))
                 for s in free_symbols:
                     if s not in no_parameters:
                         parameters_.append(s)
 
-                if set(self.equation_parameters) == set(parameters_):
-                    print(self.Name, 'Param in eq no change')
-                else:
-                    for p in parameters_:
-                        if p not in self.equation_parameters:
-                            self.equation_parameters.append(p)
-
-                    print(self.Name, self.equation_parameters)
-                    print(self.Name, 'Param in eq change')
+                self.equation_parameters = parameters_
+                # if set(self.equation_parameters) == set(parameters_):
+                #     print(self.Name, 'Param in eq no change')
+                # else:
+                #     for p in parameters_:
+                #         if p not in self.equation_parameters:
+                #             self.equation_parameters.append(p)
+                #
+                #     print(self.Name, self.equation_parameters)
+                #     print(self.Name, 'Param in eq change')
 
                 if functions is not None:
                     self.functions = []
@@ -431,10 +497,21 @@ class Ode(SynthDef):
         equation_str = []
         for j, (k, eq) in enumerate(self.config['equation'].items()):
             for i, p in enumerate(self.equation_parameters):
-                eq = re.sub(r'\b' + p + r'\b', 'param[{}]'.format(i), eq, flags=re.IGNORECASE)
+                eq = re.sub(r'\b' + p + r'\b',
+                            'param[{}]'.format(i), eq, flags=re.IGNORECASE)
+
+            if self.discrete is not None:
+                # embed()
+                for i, x in enumerate(self.variables):
+                    eq = re.sub(r'\b{}_(\d)\b'.format(
+                        x), r'$[{}*HISTORY_SIZE+wrap(history_position+1-\1,HISTORY_SIZE)]'.format(i), eq, flags=re.IGNORECASE)
+
             for i, x in enumerate(self.variables):
-                eq = re.sub(r'\b' + x + r'\b', '#[{}]'.format(i), eq, flags=re.IGNORECASE)
+                eq = re.sub(r'\b' + x + r'\b',
+                            '#[{}]'.format(i), eq, flags=re.IGNORECASE)
+
             eq = eq.replace('#', 'X')
+            eq = eq.replace('$', 'history')
             eq = 'dX[{}]='.format(self.variables.index(k)) + eq
             equation_str.append(eq)
 
@@ -443,22 +520,24 @@ class Ode(SynthDef):
         if self.functions is not None:
             functions = []
             for func in self.functions:
-                functions.append(template_read_sub(function_template_filename, func))
+                functions.append(template_read_sub(
+                    function_template_filename, func))
 
             functions = '\n     '.join(functions)
         else:
             functions = ''
 
-        if self.discrete:
-            torn = 'int n'
-        else:
-            torn = 'double t'
-
         # add more constants
         self.equation_str = self.equation_str.replace('pi', 'PI')
         subs = {'N_EQ': len(self.variables), 'N_PARAMETERS': len(self.equation_parameters),
-                'EQUATION': self.equation_str, 'FUNCTIONS': functions, 'TorN': torn}
-        template_read_sub_write(ode_template_filename, self.ode_source_filename, subs)
+                'EQUATION': self.equation_str, 'FUNCTIONS': functions}
+
+        if self.discrete is not None:
+            template_read_sub_write(
+                map_template_filename, self.ode_source_filename, subs)
+        else:
+            template_read_sub_write(
+                ode_template_filename, self.ode_source_filename, subs)
 
     def do_sc_def(self):
         if self.discrete is not None:
@@ -466,10 +545,14 @@ class Ode(SynthDef):
         else:
             rk4_or_discrete = 'Oderk4'
 
-        outputs = '\n\t'.join(['OffsetOut.ar({},osc[{}]);'.format(o.bus_id, i) for i, (var, o) in enumerate(self.outputs.items())])
-        inputs = 'inputs = [' + ','.join(['InFeedback.ar({})'.format(p.bus_id) for param, p in self.parameters.items()]) + '];'
-        initial_conditions = ','.join(['init_{}'.format(i) for i, var in enumerate(self.variables)])
-        initial_conditions_args = ','.join(['init_{}={}'.format(i, str(self.config['init'][var])) for i, var in enumerate(self.variables)])
+        outputs = '\n\t'.join(['OffsetOut.ar({},osc[{}]);'.format(
+            o.bus_id, i) for i, (var, o) in enumerate(self.outputs.items())])
+        inputs = 'inputs = [' + ','.join(['InFeedback.ar({})'.format(p.bus_id)
+                                         for param, p in self.parameters.items()]) + '];'
+        initial_conditions = ','.join(
+            ['init_{}'.format(i) for i, var in enumerate(self.variables)])
+        initial_conditions_args = ','.join(['init_{}={}'.format(
+            i, str(self.config['init'][var])) for i, var in enumerate(self.variables)])
 
         impulse = ''
         if self.discrete is not None:
@@ -478,17 +561,21 @@ class Ode(SynthDef):
 
         subs = {'rk4_or_discrete': rk4_or_discrete, 'Ode_name': self.Name, 'inputs': inputs, 'outputs': outputs,
                 'initial_conditions': initial_conditions, 'initial_conditions_args': initial_conditions_args, 'impulse': impulse}
-        template_read_sub_write(sc_def_template_filename, self.sc_def_filename, subs)
+        template_read_sub_write(sc_def_template_filename,
+                                self.sc_def_filename, subs)
 
     def build(self):
         os.chdir(self.build_path)
-        command1 = 'g++ -fpic -c {Ode_name}.cpp -o {Ode_name}.o -Ofast'.format(Ode_name=self.Name)
-        command2 = 'gcc -fpic -shared {Ode_name}.o -lm -o lib{Ode_name}.so -Ofast'.format(Ode_name=self.Name)
+        command1 = 'g++ -fpic -c {Ode_name}.cpp -o {Ode_name}.o -Ofast'.format(
+            Ode_name=self.Name)
+        command2 = 'gcc -fpic -shared {Ode_name}.o -lm -o lib{Ode_name}.so -Ofast'.format(
+            Ode_name=self.Name)
 
         subprocess.call(shlex.split(command1))
         subprocess.call(shlex.split(command2))
 
-        copy2('{path}/lib{Ode_name}.so'.format(path=os.getcwd(), Ode_name=self.Name), '{path}/..'.format(path=os.getcwd()))
+        copy2('{path}/lib{Ode_name}.so'.format(path=os.getcwd(),
+              Ode_name=self.Name), '{path}/..'.format(path=os.getcwd()))
 
     def load_synth(self):
         self.server.loadSynthDef(self.sc_def_filename)
@@ -501,7 +588,8 @@ class Ode(SynthDef):
             print(self.Name, 'Init no change')
         else:
             print(self.Name, 'Init change')
-            init_set_ = {'init_{}'.format(self.variables.index(v)): config[v] for v in config}
+            init_set_ = {'init_{}'.format(
+                self.variables.index(v)): config[v] for v in config}
             print(init_set_)
             self.set(**init_set_)
             self.config['init'].update(config)
@@ -521,8 +609,12 @@ class Ode(SynthDef):
             print(self.Name, 'Scope change')
             self.config['scope'] = config
             if 'channels' in config:
+                if not isinstance(config['channels'], Iterable):
+                    channels = [config.pop('channels')]
+                else:
+                    channels = config.pop('channels')
                 bus_id = min([x.bus_id for x in self.output_bus.values()])
-                channels = [bus_id + c for c in config.pop('channels')]
+                channels = [bus_id + c for c in channels]
                 if len(channels) < 2:
                     channels = [channels[0], channels[0]]
                 self.scope.set(busx=channels[0], busy=channels[1])
@@ -539,7 +631,11 @@ class Ode(SynthDef):
                 config['bufnum'] = self.scope.bufnum
 
             for k, v in config.items():
-                command = 'AppClock.sched(0.1,{{c[{scope_ix}].{key}={value}; nil;}});'.format(scope_ix=scope_ix, key=k, value=v)
+                # print(k, v)
+                if isinstance(v, list):
+                    v = str(v).replace("'", "")
+                command = 'AppClock.sched(0.1,{{c[{scope_ix}].{key}={value}; nil;}});'.format(
+                    scope_ix=scope_ix, key=k, value=v)
                 self.server.loadSynthDef(command, address='/lode/interpret')
 
     def create_output(self, output_var):
@@ -559,14 +655,15 @@ class Ode(SynthDef):
             for k, v in config.items():
                 if k in self.outputs.keys():
                     if 'gain' in v:
-                        self.outputs[k].set(amp=v['gain'])
+                        self.outputs[k].set(amp=v['gain'], lag=self.lag)
                     if 'pan' in v:
-                        self.outputs[k].set(pan=v['pan'])
+                        self.outputs[k].set(pan=v['pan'], lag=self.lag)
 
     def create_parameters(self, equation_parameters):
         for param in equation_parameters:
             self.input_bus[param] = InputBus()
-            self.parameters[param] = Parameter(param, self.input_bus[param].bus_id, self)
+            self.parameters[param] = Parameter(
+                param, self.input_bus[param].bus_id, self)
 
     def update_parameters(self, config):
         if self.config.get('parameters', None) == config:

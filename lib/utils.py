@@ -6,6 +6,7 @@ import sys
 import re
 from IPython import embed
 
+
 if sys.version_info[0] > 2:
 
     def clean(string):
@@ -58,7 +59,7 @@ def parse_equation(eq):
     except Exception as e:
         print('Syntax formula error')
         print(e)
-        embed()
+        # embed()
         return None
 
 
@@ -74,7 +75,8 @@ def parse_parameter_formula(formula_string):
                 d = {'mul': t[1][0][0]}
 
                 if sum(t[1][1]) == 2:
-                    k = [s for i, s in enumerate([syms[i] for i, v in enumerate(t[1][1]) if v == 1]) if 'midicc' in str(s.func)][0]
+                    k = [s for i, s in enumerate([syms[i] for i, v in enumerate(
+                        t[1][1]) if v == 1]) if 'midicc' in str(s.func)][0]
                     term_sym = t[0].replace(k, 1)
                     d['midi'] = {'mul': k}
                 else:
@@ -116,5 +118,5 @@ def parse_parameter_formula(formula_string):
     except Exception as e:
         print('Syntax formula error')
         print(e)
-        embed()
+        # embed()
         return None

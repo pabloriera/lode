@@ -17,9 +17,10 @@ class OdeNetwork(OrderedDict):
     def read_yaml(self, filename):
         try:
             with open(filename, 'r') as fp:
-                ode_config = yaml.load(fp)
-        except Exception:
-            pass
+                ode_config = yaml.load(fp, Loader=yaml.Loader)
+        except Exception as e:
+            print(e)
+            ode_config = None
 
         if ode_config is not None:
             for ode_name, v in ode_config.items():

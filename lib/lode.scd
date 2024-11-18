@@ -5,20 +5,16 @@ s.waitForBoot{
 	var scope_n = 6;
 	var scope_i = 2;
 	var scope_j = 3;
-	var scope_widht = 240;
-	var scope_height = 240;
+	var scope_widht = 1920/scope_j;
+	var scope_height = 1080/scope_i;
 
 	f = Array.fill(scope_n,{arg i; Buffer.alloc(s,4096*2,2)});
-	// f.do({arg f_; f_.bufnum.postln});
-	w=Window("Scope", Rect(10, Window.screenBounds.height-10,scope_widht*scope_j,scope_height*scope_i)).front;
+	w = Window("Scope", Rect(10, Window.screenBounds.height-10,scope_widht*scope_j,scope_height*scope_i)).front;
 
-	r = Array.fill(scope_n,{arg i;
-		r = Rect((i%scope_j)*scope_widht,(i/scope_j).asInt*scope_height,scope_widht,scope_height);
-		r;
-	});
 	c = Array.fill(scope_n,
 		{arg i;
-			c = ScopeView(w,r[i]);
+			r = Rect((i%scope_j)*scope_widht,(i/scope_j).asInt*scope_height,scope_widht,scope_height);
+			c = ScopeView(w,r);
 			c.bufnum = f[i].bufnum;
 			c.server_(s);
 			c.style=2;
@@ -47,9 +43,7 @@ s.waitForBoot{
 	OSCFunc(
 		{
 			arg msg, time, addr, port;
-			var fn;
-			// Get local filename
-			fn = msg[1].asString;
+			var fn = msg[1].asString;
 			fn.postln;
 			fn.interpret;
 		},
@@ -64,7 +58,7 @@ s.waitForBoot{
 	SynthDef.new(\output,
 		{|bus=10, amp=0, pan=0, lag=0.1|
 			var amp_ = VarLag.kr(amp,lag)/2.0;
-			Out.ar(0,Pan2.ar(LeakDC.ar(In.ar(bus,1)*(amp_**4)),pan));
+			Out.ar(0,Pan2.ar(HPF.ar(In.ar(bus,1)*(amp_**4),10),pan));
 
 	}).add;
 
@@ -108,8 +102,17 @@ s.waitForBoot{
 			Out.ar(bus,SinOsc.ar(freq:arg1_, mul:0.5, add:0.5)*mul_+add_);
 	}).add;
 
+	SynthDef.new(\input,
+		{| mul=1, add=0, bus=10, lag=0.1, arg1=0|
+			var mul_ = VarLag.kr(mul,lag);
+			var add_ = VarLag.kr(add,lag);
+			var arg1_ = VarLag.kr(arg1,lag);
+			Out.ar(bus,SoundIn.ar([0,1], mul:mul_, add:add_));
+	}).add;
+
+
 };
 
-// MIDIClient.init(1,1);
-// MIDIIn.connectAll;
+MIDIClient.init(1,1);
+MIDIIn.connectAll;
 )
