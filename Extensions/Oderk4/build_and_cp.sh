@@ -1,5 +1,6 @@
 #!/bin/bash
 export SC_PATH=/usr/local/include/SuperCollider/
+export SC_PATH=/usr/include/SuperCollider/
 ODERK4_CLASS_PATH=$HOME'/.local/share/SuperCollider/Extensions/Oderk4/classes/'
 ODERK4_PLUGIN_PATH=$HOME'/.local/share/SuperCollider/Extensions/Oderk4/plugins/'
 rm -rf build

@@ -225,6 +225,7 @@ class Parameter():
             self.prev_external_inputs = self.external_inputs
 
         except Exception as e:
+            print('Error in do_connections')
             print(e)
             pass
             # embed()

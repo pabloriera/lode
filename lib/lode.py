@@ -4,7 +4,7 @@ from OdeNetwork import OdeNetwork
 import argparse
 import pyinotify
 import pathlib
-from utils import groups_creation
+from SynthDefs import groups_creation
 
 odes = OdeNetwork()
 
