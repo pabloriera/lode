@@ -1,0 +1,217 @@
+hopf:
+  equation:
+    x: 2*pi*y*(w+wo) + (e*x-x*(x*x+y*y)+i)*s
+    y: -2*pi*x*(w+wo) + (e*y-y*(x*x+y*y)+i)*s
+  lag: 0.00
+  parameters:
+    wo: midicc(1,0,1000,1)
+    w: midinote(440,1) + 0.1 + hr.x*midicc(3,0,5,7,1)
+    e: midicc(2,-4,10,1) + lorenz.x*midicc(2,0,1,7,1)
+    s: 100.0
+    i: 0.0 +  hr.x*0.0 + sine(midicc(3,0.0,50.0,1))*midicc(4,0,200,1) + noise(midicc(5,0,1500,1))*midicc(6,0,800,1) + hopf.x(midicc(8,0.001,0.1,1))*midicc(7,-20,20,1) + vdp.y*midicc(1,0,20,7)
+  output:
+    midi:
+      cc: 16
+      channel: 1
+    x: {gain: 0.2, pan: -1}
+    y: {gain: 0.2, pan: 1}
+  init:
+    x: 0.5
+    y: 0.1
+  run: 
+    midi: 
+      cc: 40
+      channel: 7
+    flag: true
+  scope:
+    # offset: 1
+    channels: [0, 1]
+    style: 2
+    yZoom: 0.2
+    pos: 0
+
+
+rossler:
+  equation:
+    x: (-y-z+i)*tau
+    y: (x+a*y)*tau
+    z: (b+z*(x-fabs(c)))*tau
+  parameters:
+    a: 0.2
+    b: 0.2
+    c: 4 + midicc(1,-1,4,2) + lorenz.x*midicc(2,0,0.1,7,2)
+    tau: 5 + midinote(1280,2) + hr.z*midicc(3,0,1,7,2)
+    i: 0
+  init:
+    x: 0.4
+    y: 0.3
+    z: 0.3
+  output:
+    midi:
+      cc: 17
+      channel: 1
+    x: {gain: 0.2, pan: -1}
+    y: {gain: 0.2, pan: 1}
+    z: {gain: 0.2, pan: 0}     
+  run: 
+    midi: 
+      cc: 41
+      channel: 7
+    flag: true
+  scope:
+    channels: [0,1]
+    style: 2
+    yZoom: 0.1
+    pos: 1
+
+
+whopf:
+  functions:
+    e:
+      args: [y,x,m,a,b,k,t]
+      formula: sin(atan2(y,x)*m+t*k)*a+b
+  equation:
+    x:  2*pi*y*w + (e(y,x,m,a,b,k,t)*x-x*(x*x+y*y)+i)*s
+    y: -2*pi*x*w + (e(y,x,m,a,b,k,t)*y-y*(x*x+y*y)+i)*s
+  parameters:
+    w: midinote(440,3)+0.1 + hr.x*midicc(3,0,2,7,31)
+    a: midicc(1,0,14,3) + lorenz.x*midicc(2,0,1,7,3)+hr.x*midicc(3,0,4,7,32)
+    b: 5.5 + lorenz.x*midicc(2,0,1,7,33) + hr.x*midicc(3,0,4,7,36)
+    k: 7.0+hr.z*midicc(3,0,0.001,7,34)
+    m: 0 + midicc(2,0,4,3) + hr.z*midicc(3,0,1,7,35)
+    s: 100.0
+    i: 0.0 + vdp.y*midicc(1,0,20,7,3)
+  run: 
+    midi: 
+      cc: 42
+      channel: 7
+    flag: true
+  output:
+    midi:
+      cc: 18
+      channel: 1
+    x: {gain: 0.5, pan: -1}
+    y: {gain: 0.5, pan: 1}
+  init:
+    x: 0.5
+    y: 0.5
+  scope:
+    channels: [0, 1]
+    style: 2
+    yZoom: 0.2
+    pos: 2
+
+
+vdp:
+  equation:
+    x: '(y)*tau'
+    y: '(mu*(1-x*x)*y - x + i)*tau'
+  parameters:
+    mu: 4.0 + midicc(1,-2,8, 4)
+    i: midicc(2,0,10,4) + midicc(6,0,4,7,41)*hopf.x + midicc(6,0,4,7,42)*whopf.x + midicc(6,0,4,7,43)*rossler.x
+    tau: midicc(3,0,50, 4)
+  init:
+    x: 0.3
+    y: 0.2
+  output:
+      midi:
+        cc: 19
+        channel: 1
+      x: {gain: 0.7, pan: -0.1}
+      y: {gain: 0.7, pan: 0.1}
+  run: 
+    midi: 
+      cc: 43
+      channel: 7
+    flag: true
+  scope:
+    style: 1
+    fill: 0
+    frames: 12000
+    yZoom: 0.1
+    pos: 3
+
+
+lorenz:
+  equation:
+    x: '(sigma*(y-x)+i)*tau' 
+    y: '(x*(rho-z)-y)*tau'
+    z: '(x*y-beti*z)*tau'
+  parameters:
+    sigma: 11 + midicc(1,-4,4, 5)
+    rho: 26 + midicc(2,-4,4, 5) 
+    beti: 1 + midicc(3,-2,2, 5)
+    tau: 1 + midicc(4,0,50, 5)
+    i: 0+midicc(4,0,200,7,51)*hopf.x + midicc(4,0,100,7,52)*whopf.x + midicc(4,0,50,7,53)*rossler.x
+  init:
+    x: 0.1  
+    y: 0.1
+    z: 1.2
+  run: 
+    midi: 
+      cc: 44
+      channel: 7
+    flag: true
+  output:
+    midi:
+      cc: 20
+      channel: 1
+    x: 
+      gain: 0.3
+      pan: 0.0
+  scope:
+    channels: [0,2]
+    style: 2
+    yZoom: 0.05
+    pos: 4
+    offy: 20
+
+
+hr:
+  functions:
+    phi:
+      args: [x,a,b]
+      formula: -a*x*x*x + b*x*x
+    psi:
+      args: [x,c,d]
+      formula: c - d*x*x
+  equation:
+    x: (y + phi(x,a,b) - z + i)*tau
+    y: (psi(x,c,d) - y)*tau
+    z: r*(s*(x-xr)-z)*tau
+  parameters:
+    a: 1
+    b: 3
+    c: 1
+    d: 5
+    r: 0.001 + midicc(1,0,0.01, 6)
+    s: 4
+    xr: -1.6
+    i: 2 + midicc(2,-1,1.5, 6) + midicc(5,0,4,7,61)*hopf.x + midicc(5,0,4,7,62)*whopf.x + midicc(5,0,4,7,63)*rossler.x
+    tau: 1 + midicc(3, 1, 1000, 6)
+  init:
+    x: 0.1
+    y: 0.1
+    z: 0.1
+  output:
+    midi:
+      cc: 21
+      channel: 1
+    x: {gain: 0.2, pan: -1}
+    y: {gain: 0.2, pan: 1}
+  run: 
+    midi: 
+      cc: 45
+      channel: 7
+    flag: true
+  scope:
+    channels: [0,1]
+    style: 1
+    frames: 16000
+    fill: 0
+    yZoom: 0.1
+    pos: 5
+
+
+
+
