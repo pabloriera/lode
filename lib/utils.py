@@ -57,8 +57,9 @@ def parse_equation(eq):
         expr = parse_expr(eq)
         return expr
     except Exception as e:
-        print('Syntax formula error')
+        print('Syntax formula error')        
         print(e)
+        embed()
         return None
 
 
@@ -78,13 +79,14 @@ def parse_parameter_formula(formula_string):
                         t[1][1]) if v == 1]) if 'midicc' in str(s.func)][0]
                     term_sym = t[0].replace(k, 1)
                     d['midi'] = {'mul': k}
+                    d['mul'] = 0
                 else:
                     term_sym = syms[t[1][1].index(1)]
 
                 term_var = str(term_sym)
                 func = str(term_sym.func)
 
-                if func == 'midicc':
+                if func == 'midicc' or func == 'midinote':
                     v = sympify('value(x)')
                     term_sym = v.replace(v.args[0], term_sym)
                     func = str(term_sym.func)
@@ -93,7 +95,7 @@ def parse_parameter_formula(formula_string):
                     args = {}
                     midi = {}
                     for i, arg in enumerate(term_sym.args):
-                        if 'midicc' in str(arg):
+                        if 'midicc' in str(arg) or 'midinote' in str(arg):
                             midi['arg{}'.format(i + 1)] = arg
                         else:
                             args['arg{}'.format(i + 1)] = arg

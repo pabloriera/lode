@@ -1,5 +1,6 @@
 (
 s.quit;
+
 s.waitForBoot{
 
 	var scope_n = 6;

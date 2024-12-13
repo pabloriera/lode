@@ -1,5 +1,7 @@
 #!/bin/bash
-export SC_PATH=/usr/local/include/SuperCollider/
+# export SC_PATH=/usr/local/include/SuperCollider/
+export SC_PATH=/usr/include/SuperCollider/
+
 ODEMAP_CLASS_PATH=$HOME'/.local/share/SuperCollider/Extensions/Odemap/classes/'
 ODEMAP_PLUGIN_PATH=$HOME'/.local/share/SuperCollider/Extensions/Odemap/plugins/'
 rm -rf build

@@ -142,7 +142,7 @@ class ServerManager(object):
         self.client.connect((self.addr, self.port))
         self.osc_address = osc_address
 
-        self.node = 1000
+        self.node = 1200
         self.num_input_busses = 2
         self.num_output_busses = 2
         self.bus = self.num_input_busses + self.num_output_busses
@@ -203,11 +203,11 @@ class SCLangServerManager(ServerManager):
         # Assign a valid OSC Client
         self.forward = None
 
-        self.node = 1010
+        self.node = 1200
         self.num_input_busses = 2
         self.num_output_busses = 2
         self.bus = self.num_input_busses + self.num_output_busses
-        self.max_busses = 100
+        self.max_busses = 500
         self.max_buffers = 1024
 
         self.fx_setup_done = False
@@ -229,6 +229,12 @@ class SCLangServerManager(ServerManager):
                 self.num_output_busses = info.num_output_bus_channels
                 self.max_busses = info.num_audio_bus_channels
                 self.bus = self.num_input_busses + self.num_output_busses
+                print("Connected to SuperCollider server at {}:{}".format(self.addr, self.SCLang_port))
+                print("Max busses: {}".format(self.max_busses))
+                print("Max buffers: {}".format(self.max_buffers))
+                print("Input busses: {}".format(self.num_input_busses))
+                print("Output busses: {}".format(self.num_output_busses))
+                    
         else:
             self.sclang = OSCClientWrapper()
             self.sclang.connect((self.addr, self.SCLang_port))

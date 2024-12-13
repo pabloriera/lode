@@ -1,3 +1,4 @@
+from time import sleep
 from ServerManager import DefaultServer
 from IPython import embed
 from OdeNetwork import OdeNetwork
@@ -22,14 +23,17 @@ class MyEventHandler(pyinotify.ProcessEvent):
 
 def main(args):
     groups_creation(DefaultServer)
+    # add pause time sleep
+
+    sleep(0.1)
+
     # scope_window_creation()
 
     odes_yaml = str(pathlib.Path(args.odes_yaml[0]).absolute())
 
     if args.watch:
-        odes.read_yaml(odes_yaml)
-        # odes.read_yaml(odes_yaml)
-
+        odes.read_yaml(odes_yaml, first=True)
+        
         wm = pyinotify.WatchManager()
         wm.add_watch(odes_yaml, pyinotify.ALL_EVENTS, rec=True)
         # event handler

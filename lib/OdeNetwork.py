@@ -1,3 +1,4 @@
+from time import sleep
 from IPython import embed
 import yaml
 from collections import OrderedDict
@@ -14,7 +15,7 @@ class OdeNetwork(OrderedDict):
         ode.setup(config)
         self[name] = ode
 
-    def read_yaml(self, filename):
+    def read_yaml(self, filename, first=False):
         try:
             with open(filename, 'r') as fp:
                 ode_config = yaml.load(fp, Loader=yaml.Loader)
@@ -24,15 +25,23 @@ class OdeNetwork(OrderedDict):
 
         if ode_config is not None:
             for ode_name, v in ode_config.items():
+                sleep(0.1)
                 if ode_name not in self.keys():
                     if 'equation' in ode_config[ode_name]:
-                        self.add_ode(ode_name, ode_config[ode_name])
+                        self.add_ode(ode_name, ode_config[ode_name])                        
                 else:
                     self[ode_name].update(ode_config[ode_name])
+
+            if first:
+                 for ode_name, v in ode_config.items():
+                    if 'equation' in ode_config[ode_name]:
+                        self[ode_name].update(ode_config[ode_name], force=True)
 
             if len(self.keys()) > len(ode_config.keys()):
                 for ode_name in set(self.keys()) - set(ode_config.keys()):
                     self.remove_ode(ode_name)
+
+     
         else:
             print('clear')
             self.remove_all()

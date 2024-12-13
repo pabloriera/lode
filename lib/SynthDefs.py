@@ -1,3 +1,4 @@
+from copy import copy
 from typing import Iterable
 from IPython import embed
 import re
@@ -18,9 +19,11 @@ default_initial_condition = 0.001
 scope_n = 6
 scope_i = 2
 scope_j = 3
-external_input_list = ['sine', 'sine1', 'tri', 'tri1', 'noise', 'input']
-input_bus_offset = 30
-output_bus_offset = 80
+external_input_list = ['sine', 'sine1', 'tri',
+                       'tri1', 'noise', 'input',
+                       'asr']
+input_bus_offset = 50
+output_bus_offset = 200
 default_lag = 0.05
 
 
@@ -36,6 +39,9 @@ def groups_creation(server):
     n_out = server.nextnodeID()
     server.send('/g_new', [n_out, 1])
     SynthDef.set_groups(n_conn, n_param, n_gen, n_out)
+
+
+debug = True
 
 
 class SynthDef():
@@ -59,26 +65,36 @@ class SynthDef():
 
     def __init__(self):
         self.node = None
+        if debug:
+            print('SynthDef init')
         pass
 
     def new(self, name, group, args=[], action=0):
         if self.node is None:
             self.node = self.server.nextnodeID()
             self.server.send('/s_new', [name, self.node, action, group] + args)
+            if debug:
+                print('New', name, self.node, args)
 
     def set(self, **kwargs):
         if self.node is not None:
             args = [l for pair in kwargs.items() for l in pair]
             self.server.send('/n_set', [self.node] + args)
+            if debug:
+                print('Set', self.node, args)
 
     def free(self):
         # print('Freeing', self.node)
         if self.node is not None:
             self.server.send('/n_free', [self.node])
+            if debug:
+                print('Freeing', self.node)
 
     def run(self, flag):
         if self.node is not None:
             self.server.send('/n_run', [self.node, int(flag)])
+            if debug:
+                print('Run', self.node, flag)
 
     def __del__(self):
         self.free()
@@ -177,7 +193,7 @@ class Parameter():
 
     def do_connections(self, lag=default_lag):
         try:
-            # print(self.prev_external_inputs, '\n', self.external_inputs)
+            print(self.prev_external_inputs, '\n', self.external_inputs)
             diffs = list(diff(self.prev_external_inputs, self.external_inputs))
             print(diffs)
             for d in diffs:
@@ -198,6 +214,8 @@ class Parameter():
                         else:
                             if external_input in external_input_list:
                                 update_ts[external_input] = t
+                                print('New external input', self.ode.name,
+                                      self.name, external_input)
                                 self.external_inputs_conn[external_input] = SCInputDef(
                                     self.bus_id, external_input)
 
@@ -234,17 +252,46 @@ class Parameter():
 
     def assign_midi(self, node, args):
         for k, v in args.items():
-            cc = int(v.args[0])
-            min_ = float(v.args[1])
-            max_ = float(v.args[2])
+            if v.func.name == 'midicc':
+                cc = int(v.args[0])
+                min_ = float(v.args[1])
+                max_ = float(v.args[2])
+                if len(v.args) > 3:
+                    channel = int(v.args[3])-1
+                else:
+                    channel = 0
+                if len(v.args) > 4:
+                    instance = int(v.args[4])-1
+                else:
+                    instance = 0
+                command = """
+                MIDIdef(\\cc{cc}ch{channel}i{instance}).free;
+                MIDIdef.cc(\\cc{cc}ch{channel}i{instance}, {{arg val, chan, arg2, arg3;
+                    s.sendMsg("/n_set",{node},"{arg}",val/127.0*({max} - {min}) + {min});}}, {cc}, {channel});
+                """.format(node=node, cc=cc, arg=k, min=min_, max=max_, channel=channel, instance=instance) 
 
-            command = """
-            MIDIdef(\\cc{cc}).free;
-            MIDIdef.cc(\\cc{cc}, {{arg val, chan, arg2, arg3;
-                s.sendMsg("/n_set",{node},"{arg}",val/127.0*({max} - {min}) + {min});}}, {cc});
-            """.format(node=node, cc=cc, arg=k, min=min_, max=max_)
+                print(command)
 
-            self.ode.server.loadSynthDef(command, address='/lode/interpret')
+                self.ode.server.loadSynthDef(
+                    command, address='/lode/interpret')
+            elif v.func.name == 'midinote':
+                freq = float(v.args[0])
+                if len(v.args) > 1:
+                    channel = int(v.args[1])-1
+                else:
+                    channel = 0
+
+                command = """
+                MIDIdef(\\notech{channel}).free;
+                MIDIdef.noteOn(\\notech{channel}, {{arg vel, note, chan, arg1;
+                    var val = {freq}*(2.0**((note-69.0)/12.0));
+                    s.sendMsg("/n_set",{node},"{arg}", val);}}, nil, {channel});
+                """.format(node=node, arg=k, freq=freq, channel=channel)
+
+                print(command)
+
+                self.ode.server.loadSynthDef(
+                    command, address='/lode/interpret')
 
 
 class Connection():
@@ -323,6 +370,15 @@ class Ode(SynthDef):
             k: default_initial_condition for k in self.variables}
         if 'init' in config:
             self.update_initial_conditions(config['init'])
+            # if midi in init, create midi connection
+            # if 'midi' in config['init']:
+            #     cc = config['init']['midi']['cc']
+            #     channel = config['init']['midi']['channel']
+            #     command = """
+            #     MIDIdef(\\cc{cc}ch{channel}).free;
+            #     MIDIdef.cc(\\cc{cc}ch{channel}, {{arg val, chan, arg2, arg3;
+            #         s.sendMsg("/n_set",{node},"amp",val/127.0);}}, {cc}, {channel});
+            #     """.format(node=self.node, cc=cc, channel=channel)
 
         if self.discrete is not None:
             equation_parameters_ = ['hz'] + self.equation_parameters
@@ -339,13 +395,15 @@ class Ode(SynthDef):
         if 'parameters' in config:
             self.update_parameters(config['parameters'])
 
-        self.create_outputs(self.variables)
+        self.create_outputs(self.variables, config.get('output', None))
         if 'output' in config:
             self.update_outputs(config['output'])
 
         self.create_scope()
         if 'scope' in config:
             self.update_scope(config['scope'])
+
+        sleep(sleep_time)
 
         self.subsitute_and_build()
         self.load_synth()
@@ -354,7 +412,7 @@ class Ode(SynthDef):
 
         # sleep(sleep_time)
 
-    def update(self, config):
+    def update(self, config, force=False):
         if 'equation' in config:
             if config['equation'] == self.config['equation']:
                 print(self.Name, 'Eq no change')
@@ -411,13 +469,25 @@ class Ode(SynthDef):
             self.lag = default_lag
 
         if 'parameters' in config:
-            self.update_parameters(config['parameters'])
+            self.update_parameters(config['parameters'], force=force)
 
         if 'scope' in config:
             self.update_scope(config['scope'])
 
         if 'run' in config:
-            self.run(config['run'])
+            if config['run'].get('midi', None):
+                if config['run']!=self.config.get('run',None):
+                    cc = int(config['run']['midi'].get('cc', 0))
+                    channel = int(config['run']['midi'].get('channel', 0))-1
+                    command = """
+                    MIDIdef(\\cc{cc}ch{channel}).free;
+                    MIDIdef.cc(\\cc{cc}ch{channel}, {{arg val, chan, arg2, arg3;
+                        s.sendMsg("/n_run",{node}, val/127.0);}}, {cc}, {channel});
+                    """.format(node=self.node, cc=cc, channel=channel)
+                    print(command)
+                    self.server.loadSynthDef(command, address='/lode/interpret')
+                    self.run(config['run'].get('flag',True))
+                    self.config['run'] = config['run']
 
     def set_equation(self, equation, functions=None):
         if isinstance(equation, dict):
@@ -607,7 +677,7 @@ class Ode(SynthDef):
             print(self.Name, 'Scope no change')
         else:
             print(self.Name, 'Scope change')
-            self.config['scope'] = config
+            self.config['scope'] = copy(config)
             if 'channels' in config:
                 if not isinstance(config['channels'], Iterable):
                     channels = [config.pop('channels')]
@@ -622,13 +692,18 @@ class Ode(SynthDef):
             if 'frames' in config:
                 self.scope.set(scopeFrames=config.pop('frames'))
 
+            if 'offx' in config or 'offy' in config:
+                offx = config.pop('offx', 0)
+                offy = config.pop('offy', 0)
+                self.scope.set(offx=offx, offy=offy)
+
             if 'pos' in config:
                 pos = config.pop('pos')
                 scope_ix = pos
-                config['bufnum'] = self.scope.bufnum
             else:
                 scope_ix = self.scope.bufnum
-                config['bufnum'] = self.scope.bufnum
+            
+            config['bufnum'] = self.scope.bufnum
 
             for k, v in config.items():
                 # print(k, v)
@@ -638,19 +713,40 @@ class Ode(SynthDef):
                     scope_ix=scope_ix, key=k, value=v)
                 self.server.loadSynthDef(command, address='/lode/interpret')
 
+
     def create_output(self, output_var):
         self.output_bus[output_var] = OutputBus()
         return OutputDef(self.output_bus[output_var].bus_id)
 
-    def create_outputs(self, variables):
+    def create_outputs(self, variables, config=None):
         for output_var in variables:
             self.outputs[output_var] = self.create_output(output_var)
+
+        min_ = 0
+        max_ = 1.0
+        for k, v in self.outputs.items():
+            if config.get('midi', None):
+                cc = int(config['midi'].get('cc', 0))
+                channel = int(config['midi'].get('channel', 0))-1
+            else:
+                cc = 0
+                channel = 0
+            print('Creating output', k, v.bus_id, cc, channel)
+            command = """
+            MIDIdef(\\cc{cc}ch{channel}var{k}).free;
+            MIDIdef.cc(\\cc{cc}ch{channel}var{k}, {{arg val, chan, arg2, arg3;
+                s.sendMsg("/n_set",{node},"{arg}",val/127.0*({max} - {min}) + {min});}}, {cc}, {channel});
+            """.format(node=v.node, cc=cc, arg="amp", min=min_, max=max_, channel=channel, k=k)
+            print(command)
+            self.server.loadSynthDef(command, address='/lode/interpret')
 
     def update_outputs(self, config):
         if self.config.get('output', None) == config:
             print(self.Name, 'Output no change')
         else:
             print(self.Name, 'Output change')
+            print(self.outputs)
+
             self.config['output'] = config
             for k, v in config.items():
                 if k in self.outputs.keys():
@@ -665,8 +761,8 @@ class Ode(SynthDef):
             self.parameters[param] = Parameter(
                 param, self.input_bus[param].bus_id, self)
 
-    def update_parameters(self, config):
-        if self.config.get('parameters', None) == config:
+    def update_parameters(self, config, force=False):
+        if self.config.get('parameters', None) == config and force == False:
             print(self.Name, 'Parameters no change')
         else:
             print(self.Name, 'Parameters change')
